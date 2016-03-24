@@ -1,18 +1,24 @@
 package com.example.mycallreceiver;
 
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Calendar;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.protocol.HTTP;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -20,28 +26,31 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap.Config;
 import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.widget.Toast;
 
 public class MyCallReceiver extends BroadcastReceiver {
 	
 	static{
 		System.loadLibrary("jnilibsvm");
 	}
-	
+	public static JSONObject result = new JSONObject();
+	public static int raw_counter = 0;
 	public native void jniSvmTrain(String cmd);
 	public native void jniSvmPredict(String cmd);
 	public native void jniSvmScale(String cmd);
@@ -65,10 +74,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 	Sensor LightSensor = null;
 	Sensor ProxiSensor = null;
 	
+	TelephonyManager telephonyManager = null;
+	
 	
 	File SoundFile = null;
 	FileOutputStream foutSound = null;
 	OutputStreamWriter outwriterSound = null;
+	
+	String device_ID;
 	
 //	File LightFile = null;
 //	FileOutputStream foutLight = null;
@@ -196,7 +209,31 @@ public class MyCallReceiver extends BroadcastReceiver {
     			long curTime = System.currentTimeMillis();
     			String curTimeStr = ""+curTime+";   ";
     			Log.d(TAG, curTimeStr);
-        		
+    			
+                try {
+                	
+                	Thread.sleep(3000);
+                	Bundle extras = intent.getExtras();
+                	Intent i = new Intent("broadCastName");
+                  // Data you need to pass to activity
+                	String Intent_mes = device_ID + " "+incoming_number+" "+curTimeStr;
+                	i.putExtra("message", Intent_mes); 
+                	Intent i1 = new Intent(context, MainActivity.class);       
+                    i1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    context.startActivity(i1);
+                	context.sendBroadcast(i);
+                                 
+                } catch (Exception e) {
+                    e.getLocalizedMessage();
+                }
+    			 			
+//                Bundle extras = intent.getExtras();
+//                Intent i = new Intent("broadCastName");
+//                // Data you need to pass to activity
+//                String Intent_mes = device_ID + " "+incoming_number+" "+curTimeStr;
+//                i.putExtra("message", Intent_mes); 
+//                context.sendBroadcast(i); 	
         	}
         	if (((previus_state.equals("IDLE")) && (current_state.equals("OFFHOOK"))))	
         	{
@@ -251,8 +288,10 @@ public class MyCallReceiver extends BroadcastReceiver {
         String st =sp1.getString("inc_num", "no_num");
         Log.i(TAG,"get incoming number as :"+st);
         return st;
-    }    
+    } 
     
+
+   
     
     private void init(Context context){
     	    	
@@ -275,6 +314,9 @@ public class MyCallReceiver extends BroadcastReceiver {
         mySensorManager = (SensorManager)context.getSystemService(context.SENSOR_SERVICE);
         
         LightSensor = mySensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+        
+    	telephonyManager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
+    	device_ID= telephonyManager.getDeviceId();
     	
     	
 		SoundFile = new File(dir, "SoundRecord.txt");
@@ -373,6 +415,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 //				e.printStackTrace();
 //			}
 //    	}
+    	
+
     	
     	Log.i(TAG, "init successfully");
 
@@ -718,9 +762,9 @@ public class MyCallReceiver extends BroadcastReceiver {
 	
 	
 		String Str_test_input = "0"+" "+"1:"+Double.toString(Light_Sum)+" "+
-				"2:"+Double.toString(r_to_b)+" "+"3:"+Double.toString(g_to_b)+" "+"4:"+Double.toString(r_to_g)+" "+
-				"5:"+Double.toString(r_to_w)+" "+"6:"+Double.toString(g_to_w)+" "+"7:"+Double.toString(b_to_w)+" "+
-				"8:"+Double.toString(r_to_l)+" "+"9:"+Double.toString(g_to_l)+" "+"10:"+Double.toString(b_to_l)+" "+"11:"+Double.toString(w_to_l)+"\n";
+				"2:"+Double.toString(r_to_b)+" "+"3:"+Double.toString(g_to_b)+" "+"4:"+Double.toString(r_to_g)+"\n";
+//				"5:"+Double.toString(r_to_w)+" "+"6:"+Double.toString(g_to_w)+" "+"7:"+Double.toString(b_to_w)+" "+
+//				"8:"+Double.toString(r_to_l)+" "+"9:"+Double.toString(g_to_l)+" "+"10:"+Double.toString(b_to_l)+" "+"11:"+Double.toString(w_to_l)+"\n";
 		if(TestInputFile.exists()){
 			  
 			  try{
@@ -796,7 +840,81 @@ public class MyCallReceiver extends BroadcastReceiver {
 			e.printStackTrace();
 		}
 		String Str_Result = finalString.toString();
+		String [] splitStr = Str_Result.split("\\s+");
+		int Tmp_result = Integer.parseInt(splitStr[0]);
+		Double Tmp_con = 0.0;
+		if ( Tmp_result ==-1){
+			Tmp_con = Double.parseDouble(splitStr[2]);
+		}
+		else{
+			Tmp_con = Double.parseDouble(splitStr[1]);
+			
+		}
+		Str_Result = device_ID+" "+incoming_number+" "+String.valueOf(Tmp_result) +" "+String.valueOf(Tmp_con);
 		return Str_Result;  	   	
+    }
+    
+    
+    private String NightPredict(double Light_Sum, double Wifi_Sum){
+    	
+    	double Light_threshold = 20;
+    	double Wifi_threshold = -70;
+    	
+    	int Result = 0;
+    	double Result_con = 0.0;
+    	int Light_Result = 0;
+    	double Light_con = 0.0;
+    	int Wifi_Result = 0;
+    	double Wifi_con = 0.0;
+    	
+    	if (Light_Sum>Light_threshold){
+    		Light_Result = -1;
+    		Light_con = (Light_Sum - Light_threshold)/Light_Sum;
+    	}
+    	else{
+    		Light_Result = 1;
+    		Light_con = ((Light_threshold - Light_Sum)/Light_threshold) *0.9 ;
+    		
+    	}
+    	
+    	if  (Wifi_Sum < (-110)){
+    		Wifi_Result = 0;
+    	}
+    	else {
+    		if (Wifi_Sum > (Wifi_threshold)){
+    			Wifi_Result = -1;
+    			Wifi_con = (Wifi_Sum - Wifi_threshold)/Wifi_threshold +0.6;
+    		}
+    		else{
+    			Wifi_Result = 1;
+    			Wifi_con = (Wifi_threshold-Wifi_Sum )/Wifi_threshold + 0.4;	
+    		}   		
+    	}
+    	
+    	if (Wifi_Result ==0){
+    		Result = Light_Result;
+    		Result_con = Light_con;	
+    	}
+    	else{
+    		if (Light_Result ==Wifi_Result ){
+    			Result = Light_Result;
+    			Result_con = 1 - (1-Light_con) * (1-Wifi_con);	
+    		}
+    		else{
+    			if (Light_con > Wifi_con){
+        			Result = Light_Result;
+        			Result_con = Light_con * (1-Wifi_con);	
+    			}
+    			else{
+        			Result = Wifi_Result;
+        			Result_con = Wifi_con * (1-Light_con);		
+    			}
+    		}	
+    	}
+    	
+    	String Str_result = device_ID+" "+incoming_number+" "+Integer.toString(Result) + " "+Double.toString(Result_con);
+    	return Str_result;
+    		   	
     }
     
 //    private void WriteResult(String str_detect_result){
@@ -849,9 +967,17 @@ public class MyCallReceiver extends BroadcastReceiver {
     			long timeSta = System.currentTimeMillis();
     			String curTimeStr = ""+timeSta+";   ";
     			Log.d(TAG, curTimeStr);
-    			
+    			int DaytimeFlag = 0;
+    			Calendar rightNow = Calendar.getInstance();
+				int Hours = rightNow.get(Calendar.HOUR_OF_DAY);
+				int Minutes = rightNow.get(Calendar.MINUTE);
+				Double CurrentTime = (double) Hours + (double) (Minutes/60);
+				if ((CurrentTime > 7.5) && (CurrentTime < 19.5)){
+					DaytimeFlag = 1;
+				}
     			
     			if (lightValue.size()==5){
+   				
     				RecordFlag =0;
     				double Light_Sum = 0;
     				double R_Sum = 0;
@@ -875,15 +1001,26 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    				if ((B_Sum <3) || (G_Sum < 3)){
-    					Detect_result = 2;
-    					Detect_confidence = 0.0;
+    				if (DaytimeFlag==1) {
+    				
+    					if ((B_Sum <3) || (G_Sum < 3)){
+    						Detect_result = 2;
+    						Detect_confidence = 0.0;
+    						Str_Detect_result = device_ID+" "+incoming_number+" "+Integer.toString(Detect_result) + " "+ Double.toString(Detect_confidence);
+    					}
+    					else{
+    						Str_Detect_result = svmPredictResult(Light_Sum,R_Sum,G_Sum,B_Sum,W_Sum);
+    						Log.d(TAG, Str_Detect_result);
+    									
+    					}
     				}
     				else{
-    					Str_Detect_result = svmPredictResult(Light_Sum,R_Sum,G_Sum,B_Sum,W_Sum);
-    					Log.d(TAG, Str_Detect_result);
-    					writeJSON(outwriterAllInfo,timeSta,"Result",Str_Detect_result);			
-    				}		
+    					Str_Detect_result = NightPredict(Light_Sum,Wifi_Sum);	
+    				}
+    				writeFinalJSON(outwriterAllInfo,timeSta,"Result",Str_Detect_result);
+    				
+    				
+    				
     				
     				if (EndingCallFlag == 1)
     				{
@@ -1025,18 +1162,129 @@ public class MyCallReceiver extends BroadcastReceiver {
     }; 
     
     
-	public void writeJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
-		JSONObject object = new JSONObject();
-		try {
+    public void writeJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
+    	   JSONObject object = new JSONObject();
+    	   try {
 
-			object.put("timestamp", timestamp);
-			object.put(tag, info);
-			String content = object.toString() + "\n";
-			myWriter.append(content);
-			Log.i(TAG, content);
+    	      object.put("timestamp", timestamp);
+    	      object.put(tag, info);
+    	           result.put("raw"+String.valueOf(raw_counter),object);
+    	           raw_counter = raw_counter+1;
+    	      String content = object.toString() + "\n";
+    	      myWriter.append(content);
+    	           /*if(status.getStatusCode() == HttpStatus.SC_OK){
+    	               ByteArrayOutputStream out = new ByteArrayOutputStream();
+    	               response.getEntity().writeTo(out);
+    	               out.close();
+    	               Log.d("DEBUG",out.toString());
+    	           }*/
+    	           //Log.i(TAG, content);
 
-		} catch (JSONException | IOException e) {
-			e.printStackTrace();
-		}
-	}  
+    	   } catch (JSONException | IOException e) {
+    	      e.printStackTrace();
+    	   }
+    	}
+    	   public void writeFinalJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
+    	       try {
+    	           JSONObject object = new JSONObject();
+    	           object.put("timestamp", timestamp);
+    	           object.put(tag, info);
+    	           Log.d("JACK",result.toString());
+    	           if(result.has("result")){
+    	               result.put("result2",object);
+    	           }
+    	           else {
+    	               result.put("result", object);
+    	           }
+    	           /*HttpClient httpClient = new DefaultHttpClient();
+    	           //Upload to GAE
+    	           StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+    	           StrictMode.setThreadPolicy(policy);
+    	           HttpPost request = new HttpPost("http://psychic-rush-755.appspot.com/upload");
+    	           //StringEntity params = new StringEntity(result.toString());
+    	           List<NameValuePair> parameters = new ArrayList<NameValuePair>();
+    	           parameters.add(new BasicNameValuePair("fruit", result.toString()));
+    	           request.setEntity(new UrlEncodedFormEntity(parameters));
+    	           HttpResponse response = httpClient.execute(request);
+    	           //Debug the returning message
+    	           StatusLine status = response.getStatusLine();
+    	           Log.d("JACK-Request", result.toString());
+    	           Log.d("JACK", String.valueOf(status.getStatusCode()));
+    	           if(status.getStatusCode() == HttpStatus.SC_OK){
+    	               ByteArrayOutputStream out = new ByteArrayOutputStream();
+    	               response.getEntity().writeTo(out);
+    	               out.close();
+    	               Log.d("Jack-Response",out.toString());
+    	           }
+    	           result = null;
+    	           result = new JSONObject();
+    	           raw_counter = 0;*/
+    	           Thread t = new Thread() {
+
+    	               public void run() {
+    	                   Looper.prepare(); //For Preparing Message Pool for the child Thread
+    	                   HttpClient client = new DefaultHttpClient();
+    	                   HttpResponse response;
+    	                   JSONObject json = new JSONObject();
+
+    	                   try {
+    	                       HttpPost post = new HttpPost("http://psychic-rush-755.appspot.com/upload");
+    	                       StringEntity se = new StringEntity( result.toString());
+    	                       se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+    	                       post.setEntity(se);
+    	                       response = client.execute(post);
+
+    	                   /*Checking response */
+    	                       if(response!=null){
+    	                           InputStream in = response.getEntity().getContent(); //Get the data in the entity
+    	                           String s = getStringFromInputStream(in);
+    	                           Log.d("Jack-Response",s);
+    	                       }
+    	                       result = null;
+    	                       result = new JSONObject();
+    	                       raw_counter = 0;
+    	                   } catch(Exception e) {
+    	                       e.printStackTrace();
+    	                   }
+    	               }
+    	           };
+    	           if(result.has("result2")) {
+    	               t.start();
+    	           }
+
+
+
+    	       }
+    	       catch (Exception e){
+    	           e.printStackTrace();
+    	       }
+    	   }
+    	   private static String getStringFromInputStream(InputStream is) {
+
+    		    BufferedReader br = null;
+    		    StringBuilder sb = new StringBuilder();
+
+    		    String line;
+    		    try {
+
+    		        br = new BufferedReader(new InputStreamReader(is));
+    		        while ((line = br.readLine()) != null) {
+    		            sb.append(line);
+    		        }
+
+    		    } catch (IOException e) {
+    		        e.printStackTrace();
+    		    } finally {
+    		        if (br != null) {
+    		            try {
+    		                br.close();
+    		            } catch (IOException e) {
+    		                e.printStackTrace();
+    		            }
+    		        }
+    		    }
+
+    		    return sb.toString();
+
+    		}
 }
