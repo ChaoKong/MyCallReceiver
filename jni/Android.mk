@@ -11,10 +11,22 @@ LOCAL_CFLAGS    := -DDEV_NDK=1
 #LOCAL_SRC_FILES := common.cpp acoustic_detection.cpp
 LOCAL_SRC_FILES := \
 	common.cpp jnilibsvm.cpp \
-	libsvm/svm-train.cpp \
-	libsvm/svm-predict.cpp \
 	libsvm/svm-scale.cpp \
-	libsvm/svm.cpp
+	libsvm/linear-predict.cpp \
+	libsvm/svm.cpp \
+	libsvm/tron.cpp \
+	libsvm/linear.cpp \
+	libsvm/blas/daxpy.cpp \
+	libsvm/blas/ddot.cpp \
+	libsvm/blas/dnrm2.cpp \
+	libsvm/blas/dscal.cpp \
+	getAudioFeature.cpp \
+	DspFilters/Butterworth.cpp \
+	DspFilters/Biquad.cpp \
+	DspFilters/PoleFilter.cpp \
+	DspFilters/Cascade.cpp
+	
+	
 
 LOCAL_LDLIBS	+= -llog -ldl
 

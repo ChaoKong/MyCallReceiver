@@ -9,8 +9,39 @@
     tools:context="com.example.mycallreceiver.MainActivity" >
 
     <TextView
+        android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/hello_world" />
+    
+    
+    <TextView
+        android:id="@+id/CallStart_reading"
+        android:text ="Call Start: "
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/title" />
+    
+    <TextView
+        android:id="@+id/CallEnd_reading"
+        android:text ="Call End: "
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/CallStart_reading" />
 
+    <TextView
+        android:id="@+id/LocationStart_reading"
+        android:text ="Location(call start): "
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/CallEnd_reading" />
+
+    
+    <TextView
+        android:id="@+id/LocationEnd_reading"
+        android:text ="Location(call  end):  "
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/LocationStart_reading" />
+    
 </RelativeLayout>

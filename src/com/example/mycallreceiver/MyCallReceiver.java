@@ -22,6 +22,14 @@ import org.apache.http.protocol.HTTP;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -31,9 +39,12 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -46,15 +57,18 @@ import android.util.Log;
 
 public class MyCallReceiver extends BroadcastReceiver {
 	
-	static{
-		System.loadLibrary("jnilibsvm");
-	}
-	public static JSONObject result = new JSONObject();
+//	static{
+//		System.loadLibrary("jnilibsvm");
+//	}
+//	
+//	public native void jniSvmPredict(String cmd);
+//	public native void jniSvmScale(String cmd);
+//	public native void processAudio(String cmd);
+	private static final String TAG = "Broadcast Debug";
+	
+	public static JSONObject callStart = null;
+	public static JSONObject callEnd = null;
 	public static int raw_counter = 0;
-	public native void jniSvmTrain(String cmd);
-	public native void jniSvmPredict(String cmd);
-	public native void jniSvmScale(String cmd);
-	private static final String TAG = "Debug";
 
 	
 	private boolean isRecording = false;
@@ -81,6 +95,11 @@ public class MyCallReceiver extends BroadcastReceiver {
 	FileOutputStream foutSound = null;
 	OutputStreamWriter outwriterSound = null;
 	
+	
+	File SoundDataFile = null;
+	FileOutputStream foutSoundData = null;
+	OutputStreamWriter outwriterSoundData = null;
+	
 	String device_ID;
 	
 //	File LightFile = null;
@@ -103,11 +122,11 @@ public class MyCallReceiver extends BroadcastReceiver {
 	FileOutputStream foutAllInfo = null;
 	OutputStreamWriter outwriterAllInfo = null;
 	
-	File TestInputFile = null;
-	FileOutputStream foutTestInput = null;
-	OutputStreamWriter outwriterTestInput = null;
-	
-	
+//	File TestInputFile = null;
+//	FileOutputStream foutTestInput = null;
+//	OutputStreamWriter outwriterTestInput = null;
+//	
+//	
 //	File ResultFile = null;
 //	FileOutputStream foutResult = null;
 //	OutputStreamWriter outwriterResult = null;
@@ -120,6 +139,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 	BufferedReader bufferedReader = null;
 	
 	File InputRGBFile = null;
+	
+
 	
 	
 	
@@ -141,12 +162,32 @@ public class MyCallReceiver extends BroadcastReceiver {
     
     private float ReadProxi = 0;
     private int RecordFlag = 0;
-    private int EndingCallFlag =0;
+    public int EndingCallFlag =0;
     
-    public String Cmd_svm_scale;
-    public String Cmd_svm_predict;
+//    public String Cmd_svm_scale;
+//    public String Cmd_svm_predict;
+//    public String Cmd_get_feature;
+//    
+//    public int calculate_mode = 0;
     
+    //  0- default; 1- RGB; 2 - night predict ; 3 - > 5000; 4 - audio test; 5 - no light and wifi
+    public int Audio_flag = 0;
+    public int Audio_start = 0;
+  
+    public int proxi_count = 0;
+    public long proxi_time = 0;
+    public long cur_proxi_time = 0;
+    public int proxi_start = 0;
+    public long stop_proxi_time = 0;
+    public long stop_proxi_time_end = 0;
+    public long stop_proxi_time_end2 = 0;
+    public Thread proxiThread = null;
+    public Thread proxiThread2 = null;
+    public int register_light = 0;
+    public int proxi_thread_start = 0;
+    public int proxi_thread_start2 = 0;
     
+    public int CallType = 0;
     
     
 	
@@ -204,59 +245,63 @@ public class MyCallReceiver extends BroadcastReceiver {
         	if(((previus_state.equals("OFFHOOK")) && (current_state.equals("IDLE")))){
         		//Toast.makeText(context, "Updating  state from "+previus_state +" to "+current_state +"       register sensor", Toast.LENGTH_LONG).show();
         		init(context);
-        		EndingCallFlag = 1;
-        		registerProxiSensor(); 
-    			long curTime = System.currentTimeMillis();
-    			String curTimeStr = ""+curTime+";   ";
-    			Log.d(TAG, curTimeStr);
-    			
-                try {
-                	
-                	Thread.sleep(3000);
-                	Bundle extras = intent.getExtras();
-                	Intent i = new Intent("broadCastName");
-                  // Data you need to pass to activity
-                	String Intent_mes = device_ID + " "+incoming_number+" "+curTimeStr;
-                	i.putExtra("message", Intent_mes); 
-                	Intent i1 = new Intent(context, MainActivity.class);       
-                    i1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    context.startActivity(i1);
-                	context.sendBroadcast(i);
-                                 
-                } catch (Exception e) {
-                    e.getLocalizedMessage();
-                }
-    			 			
-//                Bundle extras = intent.getExtras();
-//                Intent i = new Intent("broadCastName");
-//                // Data you need to pass to activity
-//                String Intent_mes = device_ID + " "+incoming_number+" "+curTimeStr;
-//                i.putExtra("message", Intent_mes); 
-//                context.sendBroadcast(i); 	
+				callEnd = new JSONObject();
+				EndingCallFlag = 1;
+				registerProxiSensor();
+				Log.d(TAG, "call end");
+				long cur_time = System.currentTimeMillis();
+				Log.d(TAG, String.valueOf(cur_time));
+				Log.d(TAG, String.valueOf(EndingCallFlag));
+				CallType = 2;
+				
+
+
         	}
         	if (((previus_state.equals("IDLE")) && (current_state.equals("OFFHOOK"))))	
         	{
         		init(context);
-        		EndingCallFlag = 0;
+        		callStart = new JSONObject();
+        		raw_counter = 0;
+        		RecordFlag =1;
+        		EndingCallFlag = 3;
         		registerLightSensor2();
-    			long curTime = System.currentTimeMillis();
-    			String curTimeStr = ""+curTime+";   ";
-    			Log.d(TAG, curTimeStr);
+				long cur_time = System.currentTimeMillis();
+				Log.d(TAG, String.valueOf(cur_time));
+				Log.d(TAG, String.valueOf(EndingCallFlag));
+        		CallType = 1;
+        		Log.d(TAG, "outgoing call");
+
         	}
+        	
+//        	if ((previus_state.equals("FIRST_CALL_RINGING")) && (current_state.equals("OFFHOOK")))
+//        	{
+//        		init(context);
+//        		EndingCallFlag = 0;
+//        		registerLightSensor2();
+//    			long curTime = System.currentTimeMillis();
+//    			String curTimeStr = ""+curTime+";   ";
+//    			Log.d(TAG, curTimeStr);
+//                Intent i = new Intent("broadCastName");
+//                // Data you need to pass to activity
+//                Log.d("send start intent", "start send intent");
+//                i.putExtra("message", "callStart"); 
+//                context.sendBroadcast(i);
+//        	}
         	
         	if ((previus_state.equals("IDLE")) && (current_state.equals("FIRST_CALL_RINGING")))
         	{
         		init(context);
-        		EndingCallFlag = 0;
-        		registerLightSensor2();
-    			long curTime = System.currentTimeMillis();
-    			String curTimeStr = ""+curTime+";   ";
-    			Log.d(TAG, curTimeStr);
-        	}
+        		callStart = new JSONObject();
+        		raw_counter = 0;
+        		EndingCallFlag = 2;
+        		registerProxiSensor();
+				long cur_time = System.currentTimeMillis();
+				Log.d(TAG, String.valueOf(cur_time));
+				Log.d(TAG, String.valueOf(EndingCallFlag));
+        		CallType = 1;
+        		Log.d(TAG, "incoming call");
         		
-        	
-        	
+        	}	
         }   	   	
     }
     
@@ -300,9 +345,9 @@ public class MyCallReceiver extends BroadcastReceiver {
 		dir.mkdirs();
 		
 		
-//		am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-//		mediaPlayer = MediaPlayer.create(context, R.raw.chirp11);
-//		mediaPlayer.setVolume(0.5f, 0.5f);
+		am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+		mediaPlayer = MediaPlayer.create(context, R.raw.chirp22);
+		//mediaPlayer.setVolume(0.5f, 0.5f);
 		InputRGBFile = new File("/sys/devices/virtual/sensors/light_sensor/raw_data");
 		
 
@@ -313,7 +358,6 @@ public class MyCallReceiver extends BroadcastReceiver {
         
         mySensorManager = (SensorManager)context.getSystemService(context.SENSOR_SERVICE);
         
-        LightSensor = mySensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         
     	telephonyManager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
     	device_ID= telephonyManager.getDeviceId();
@@ -328,32 +372,18 @@ public class MyCallReceiver extends BroadcastReceiver {
 				e.printStackTrace();
 			}
     	}
+    	
+		SoundDataFile = new File(dir, "SoundData.txt");
+    	if (!SoundDataFile.exists()){
+    		try {
+    			SoundDataFile.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
     	LightSensor = mySensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
 
-//		if (LightSensor != null) {
-//			// textLIGHT_available.setText("Sensor LIGHT Available");
-//			// mySensorManager.registerListener(LightSensorListener,
-//			// LightSensor, SensorManager.SENSOR_DELAY_NORMAL);
-//			LightFile = new File(dir, "LightRecord.txt");
-//			RGBFile = new File(dir, "RGB.txt");
-//			if (!LightFile.exists()) {
-//				try {
-//					LightFile.createNewFile();
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//			}
-//			if (!RGBFile.exists()) {
-//				try {
-//					RGBFile.createNewFile();
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//			}
-//		} else {
-//		}
 
 		ProxiSensor = mySensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
 
@@ -374,15 +404,6 @@ public class MyCallReceiver extends BroadcastReceiver {
 			// textTemper_reading.setText("Temperature(C): ");
 		}
 		
-//        WifiFile = new File(dir,"WifiRecord.txt");
-//    	if (!WifiFile.exists()){
-//    		try {
-//    			WifiFile.createNewFile();
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//    	}
     	
     	
     	AllInfoFile = new File(dir,"AllInfoRecord.txt");
@@ -395,70 +416,40 @@ public class MyCallReceiver extends BroadcastReceiver {
 			}
     	}
     	
+    	Audio_start = 0;	
+    	CallType = 0;
+    	proxi_count = 0;
+    	RecordFlag = 0;
+    	proxiThread = null;
+    	proxiThread2 = null;
+    	register_light = 0;
+    	proxi_thread_start = 0;
+    	proxi_thread_start2 = 0;
+    	callStart = null;
+    	callEnd = null;
     	
-    	TestInputFile = new File(dir,"TestInput");
-    	if (!TestInputFile.exists()){
-    		try {
-    			TestInputFile.createNewFile();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
-    	
-//    	ResultFile = new File(dir,"ResultRecord.txt");
-//    	if (!ResultFile.exists()){
-//    		try {
-//    			ResultFile.createNewFile();
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//    	}
-    	
-
-    	
+		
     	Log.i(TAG, "init successfully");
 
     	
     }
     
+ 
+    
     private void registerLightSensor() {
+    	
+	    lightValue = new ArrayList<Double>();
+	    RValue = new ArrayList<Double>();
+	    GValue = new ArrayList<Double>();
+	    BValue = new ArrayList<Double>();
+	    WValue = new ArrayList<Double>();
+	    TValue = new ArrayList<Integer>();
+	    WifiValue = new ArrayList<Integer>();	
+	    long curTime = System.currentTimeMillis();
+	    Log.d("create array", "create array "+String.valueOf(curTime));
     	
 		if(LightSensor != null){
 			
-//			if(LightFile.exists()){
-//				try{
-//					foutLight = new FileOutputStream(LightFile,true);
-//					outwriterLight = new OutputStreamWriter(foutLight);
-//				} catch(Exception e)
-//				{
-//				}
-//			}	
-//			if(WifiFile.exists()){
-//				  
-//				  try{
-//		    		
-//					  foutWifi = new FileOutputStream(WifiFile,true);
-//					  outwriterWifi= new OutputStreamWriter(foutWifi);
-//				
-//				  } catch(Exception e)
-//				  {
-//
-//				  }
-//			}
-//			if(RGBFile.exists()){
-//				  
-//				  try{
-//		    		
-//					  foutRGB = new FileOutputStream(RGBFile,true);
-//					  outwriterRGB= new OutputStreamWriter(foutRGB);
-//				
-//				  } catch(Exception e)
-//				  {
-//
-//				  }
-//			}
 			if(AllInfoFile.exists()){
 				  
 				  try{
@@ -471,60 +462,35 @@ public class MyCallReceiver extends BroadcastReceiver {
 
 				  }
 			}
-			
-			
-
-			
 			mySensorManager.registerListener(LightSensorListener, LightSensor, SensorManager.SENSOR_DELAY_NORMAL);
 		}
-	    lightValue = new ArrayList<Double>();
-	    RValue = new ArrayList<Double>();
-	    GValue = new ArrayList<Double>();
-	    BValue = new ArrayList<Double>();
-	    WValue = new ArrayList<Double>();
-	    TValue = new ArrayList<Integer>();
-	    WifiValue = new ArrayList<Integer>();	
-	    	    
-	    
+
+		if (proxiThread!= null)
+		{
+			if (!proxiThread.isInterrupted());
+			{
+				proxiThread.interrupt();
+				proxiThread = null;
+				Log.d("stop proxi thread", "stop proxi thread in register light");
+				
+			}
+		}
+		
     }
     
     
     private void registerLightSensor2() {
     	
+	    lightValue = new ArrayList<Double>();
+	    RValue = new ArrayList<Double>();
+	    GValue = new ArrayList<Double>();
+	    BValue = new ArrayList<Double>();
+	    WValue = new ArrayList<Double>();
+	    TValue = new ArrayList<Integer>();
+	    WifiValue = new ArrayList<Integer>();	
+    	
 		if(LightSensor != null){
 			
-//			if(LightFile.exists()){
-//				try{
-//					foutLight = new FileOutputStream(LightFile,true);
-//					outwriterLight = new OutputStreamWriter(foutLight);
-//				} catch(Exception e)
-//				{
-//				}
-//			}	
-//			if(WifiFile.exists()){
-//				  
-//				  try{
-//		    		
-//					  foutWifi = new FileOutputStream(WifiFile,true);
-//					  outwriterWifi= new OutputStreamWriter(foutWifi);
-//				
-//				  } catch(Exception e)
-//				  {
-//
-//				  }
-//			}
-//			if(RGBFile.exists()){
-//				  
-//				  try{
-//		    		
-//					  foutRGB = new FileOutputStream(RGBFile,true);
-//					  outwriterRGB= new OutputStreamWriter(foutRGB);
-//				
-//				  } catch(Exception e)
-//				  {
-//
-//				  }
-//			}
 			
 			if(AllInfoFile.exists()){
 				  
@@ -538,17 +504,9 @@ public class MyCallReceiver extends BroadcastReceiver {
 
 				  }
 			}
-			
-			
 			mySensorManager.registerListener(LightSensorListener, LightSensor, SensorManager.SENSOR_DELAY_FASTEST);
 		}
-	    lightValue = new ArrayList<Double>();
-	    RValue = new ArrayList<Double>();
-	    GValue = new ArrayList<Double>();
-	    BValue = new ArrayList<Double>();
-	    WValue = new ArrayList<Double>();
-	    TValue = new ArrayList<Integer>();
-	    WifiValue = new ArrayList<Integer>();	
+
     }
     
     
@@ -557,31 +515,6 @@ public class MyCallReceiver extends BroadcastReceiver {
     {
     	if(LightSensor != null){
 			mySensorManager.unregisterListener(LightSensorListener,LightSensor);
-//			try {
-//				outwriterLight.flush();
-//				outwriterLight.close();
-//				foutLight.close();
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			try {
-//				outwriterWifi.flush();
-//				outwriterWifi.close();
-//				foutWifi.close();
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			
-//			try {
-//				outwriterRGB.flush();
-//				outwriterRGB.close();
-//				foutRGB.close();
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
 			
 			try {
 				outwriterAllInfo.flush();
@@ -592,9 +525,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 				e.printStackTrace();
 			}
 			
-    	}
-
-      	
+    	}      	
 	    lightValue.clear();
 	    RValue.clear();
 	    GValue.clear();
@@ -637,318 +568,140 @@ public class MyCallReceiver extends BroadcastReceiver {
 				{
 				}
 			}
-			mySensorManager.registerListener(ProxiSensorListener, ProxiSensor, SensorManager.SENSOR_DELAY_NORMAL);
+			mySensorManager.registerListener(ProxiSensorListener, ProxiSensor, SensorManager.SENSOR_DELAY_FASTEST);
 		}		
+    }
+        
+
+    private void startEmitting(){
+    	mediaPlayer.start();	
     }
     
     
-
-    
+    private void stopEmitting() {
+    	mediaPlayer.pause();
+    	mediaPlayer.release();
+    	mediaPlayer = null;
+    }   
     
    
     
-//    private void startRecording() {
-//
-//		int min = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
-//		record = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, AudioFormat.CHANNEL_IN_MONO,
-//				AudioFormat.ENCODING_PCM_16BIT, min);
-//        record.startRecording();
-//        isRecording = true;
-//        recordingThread = new Thread(new Runnable() {
-//            public void run() {
-//                writeAudioDataToFile();
-//            }
-//        }, "AudioRecorder Thread");
-//        recordingThread.start();
-//    }
+    private void startRecording() {
+
+		int min = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+		record = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, AudioFormat.CHANNEL_IN_MONO,
+				AudioFormat.ENCODING_PCM_16BIT, min);
+        record.startRecording();
+        isRecording = true;
+        recordingThread = new Thread(new Runnable() {
+            public void run() {
+                writeAudioDataToFile();
+            }
+        }, "AudioRecorder Thread");
+        recordingThread.start();
+    }
 
         //convert short to byte
-//    private byte[] short2byte(short[] sData) {
-//        int shortArrsize = sData.length;
-//        byte[] bytes = new byte[shortArrsize * 2];
-//        for (int i = 0; i < shortArrsize; i++) {
-//            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
-//            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
-//            sData[i] = 0;
-//        }
-//        return bytes;
-//
-//    }
-//
-//    private void writeAudioDataToFile() {
-//        // Write the output audio in byte
-//        int num = 0;
-//        short sData[] = new short[BufferElements2Rec];
-//
-//        
-//        try {
-//        	foutSound = new FileOutputStream(SoundFile,true);
-//        	outwriterSound = new OutputStreamWriter(foutSound);
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        }
-//
-//        while (isRecording) {
-//            // gets the voice output from microphone to byte format
-//
-//            num=record.read(sData, 0, BufferElements2Rec);
-//            System.out.println("Short wirting to file" + sData.toString());
-//            if (num == BufferElements2Rec){
-//	            long curTime = System.currentTimeMillis();
-//	            String curTimeStr = ""+curTime+";   ";
-//	            Log.d(TAG,curTimeStr);
-//	            try {
-//	            	outwriterSound.append(curTimeStr);
-//	    		} catch (IOException e1) {
-//	    			// TODO Auto-generated catch block
-//	    			e1.printStackTrace();
-//	    		}
-//	        	String strI = ""+(sData.length);
-//	        	Log.d(TAG, strI);
-//	        	
-//	        	for ( int i=0; i<sData.length;i++){
-//	        		try {
-//	        			String tempS = Short.toString(sData[i])+"    ";
-//	        			outwriterSound.append(tempS);
-//					} catch (IOException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}
-//	        	}
-//        		try {
-//        			String tempS = "\n";
-//        			outwriterSound.append(tempS);
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//            }
-//            
-//        	try {
-//        		outwriterSound.flush();
-//    		} catch (IOException e) {
-//    			// TODO Auto-generated catch block
-//    			e.printStackTrace();
-//    		}
-//            
-//            
-//        }
-//       
-//    }
-//
-//    private void stopRecording() {
-//        // stops the recording activity
-//        if (null != record) {
-//            isRecording = false;
-//            record.stop();
-//            record.release();
-//            record = null;
-//
-//            recordingThread = null;
-//        }
-//    }
-    
-    private String svmPredictResult(double Light_Sum, double R_Sum, double G_Sum, double B_Sum, double W_Sum){
-		double r_to_b = R_Sum/B_Sum;
-		double g_to_b = G_Sum/B_Sum;
-		double r_to_g = R_Sum/G_Sum;
-		double r_to_w = R_Sum/W_Sum;
-		double g_to_w = G_Sum/W_Sum;
-		double b_to_w = B_Sum/W_Sum;
-		double r_to_l = R_Sum/Light_Sum;
-		double g_to_l = G_Sum/Light_Sum;
-		double b_to_l = B_Sum/Light_Sum;
-		double w_to_l = W_Sum/Light_Sum;	
-	
-	
-		String Str_test_input = "0"+" "+"1:"+Double.toString(Light_Sum)+" "+
-				"2:"+Double.toString(r_to_b)+" "+"3:"+Double.toString(g_to_b)+" "+"4:"+Double.toString(r_to_g)+"\n";
-//				"5:"+Double.toString(r_to_w)+" "+"6:"+Double.toString(g_to_w)+" "+"7:"+Double.toString(b_to_w)+" "+
-//				"8:"+Double.toString(r_to_l)+" "+"9:"+Double.toString(g_to_l)+" "+"10:"+Double.toString(b_to_l)+" "+"11:"+Double.toString(w_to_l)+"\n";
-		if(TestInputFile.exists()){
-			  
-			  try{
-	    		
-				  foutTestInput = new FileOutputStream(TestInputFile,false);
-				  outwriterTestInput= new OutputStreamWriter(foutTestInput);
-			
-			  } catch(Exception e)
-			  {
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
 
-			  }
-		}
-		
-		try {
-			outwriterTestInput.append(Str_test_input);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		try {
-			outwriterTestInput.flush();
-			outwriterTestInput.close();
-			foutTestInput.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		String Str_dir = dir + "/";
-		String Str_model = Str_dir+"model";
-		String Str_range = Str_dir+"range";
-		String Str_test = Str_dir + "TestInput";
-		String Str_scale = Str_dir+"TestInput_scale";
-		String Str_result = Str_dir + "Detect_result";
-		
-		Cmd_svm_scale = "-r "+Str_range+" "+Str_test+" "+Str_scale;
-		Cmd_svm_predict = "-b 1 "+Str_scale+" "+Str_model+" "+Str_result;
-		jniSvmScale(Cmd_svm_scale);
-		jniSvmPredict(Cmd_svm_predict);
-		
-		File SvmResultFile = new File(Str_result);
-		BufferedReader bufferedReader_svm = null;
-		try {
-			bufferedReader_svm = new BufferedReader(new FileReader(SvmResultFile));
-		} catch (FileNotFoundException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
+    }
 
-		StringBuilder finalString = new StringBuilder();
+    private void writeAudioDataToFile() {
+        // Write the output audio in byte
+        int num = 0;
+        short sData[] = new short[BufferElements2Rec];
 
-		if (bufferedReader_svm != null) {
-			String line;
-			try {
-				int count = 0;
-				while ((line = bufferedReader_svm.readLine()) != null) {
-					if (count==0){
-						count = 1;
-						continue;
+        
+        try {
+        	foutSound = new FileOutputStream(SoundFile,true);
+        	outwriterSound = new OutputStreamWriter(foutSound);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        
+        try {
+        	foutSoundData = new FileOutputStream(SoundDataFile);
+        	outwriterSoundData = new OutputStreamWriter(foutSoundData);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        while (isRecording) {
+            // gets the voice output from microphone to byte format
+
+            num=record.read(sData, 0, BufferElements2Rec);
+            System.out.println("Short wirting to file" + sData.toString());
+            if (num == BufferElements2Rec){
+	            long curTime = System.currentTimeMillis();
+	            String curTimeStr = ""+curTime+";   ";
+	            Log.i(TAG,curTimeStr);
+	            try {
+	            	outwriterSound.append(curTimeStr);
+	    		} catch (IOException e1) {
+	    			// TODO Auto-generated catch block
+	    			e1.printStackTrace();
+	    		}
+	        	String strI = ""+(sData.length);
+	        	Log.i(TAG, strI);
+	        	
+	        	for ( int i=0; i<sData.length;i++){
+	        		try {
+	        			String tempS = Short.toString(sData[i])+"    ";
+	        			outwriterSound.append(tempS);
+	        			outwriterSoundData.append(tempS);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
-					finalString.append(line);
-					Log.d(TAG, line);
+	        	}
+        		try {
+        			String tempS = "\n";
+        			outwriterSound.append(tempS);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		try {
-			bufferedReader_svm.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		String Str_Result = finalString.toString();
-		String [] splitStr = Str_Result.split("\\s+");
-		int Tmp_result = Integer.parseInt(splitStr[0]);
-		Double Tmp_con = 0.0;
-		if ( Tmp_result ==-1){
-			Tmp_con = Double.parseDouble(splitStr[2]);
-		}
-		else{
-			Tmp_con = Double.parseDouble(splitStr[1]);
-			
-		}
-		Str_Result = device_ID+" "+incoming_number+" "+String.valueOf(Tmp_result) +" "+String.valueOf(Tmp_con);
-		return Str_Result;  	   	
-    }
-    
-    
-    private String NightPredict(double Light_Sum, double Wifi_Sum){
-    	
-    	double Light_threshold = 20;
-    	double Wifi_threshold = -70;
-    	
-    	int Result = 0;
-    	double Result_con = 0.0;
-    	int Light_Result = 0;
-    	double Light_con = 0.0;
-    	int Wifi_Result = 0;
-    	double Wifi_con = 0.0;
-    	
-    	if (Light_Sum>Light_threshold){
-    		Light_Result = -1;
-    		Light_con = (Light_Sum - Light_threshold)/Light_Sum;
-    	}
-    	else{
-    		Light_Result = 1;
-    		Light_con = ((Light_threshold - Light_Sum)/Light_threshold) *0.9 ;
-    		
-    	}
-    	
-    	if  (Wifi_Sum < (-110)){
-    		Wifi_Result = 0;
-    	}
-    	else {
-    		if (Wifi_Sum > (Wifi_threshold)){
-    			Wifi_Result = -1;
-    			Wifi_con = (Wifi_Sum - Wifi_threshold)/Wifi_threshold +0.6;
+            }
+            
+        	try {
+        		outwriterSound.flush();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
     		}
-    		else{
-    			Wifi_Result = 1;
-    			Wifi_con = (Wifi_threshold-Wifi_Sum )/Wifi_threshold + 0.4;	
-    		}   		
-    	}
-    	
-    	if (Wifi_Result ==0){
-    		Result = Light_Result;
-    		Result_con = Light_con;	
-    	}
-    	else{
-    		if (Light_Result ==Wifi_Result ){
-    			Result = Light_Result;
-    			Result_con = 1 - (1-Light_con) * (1-Wifi_con);	
+        	
+        	try {
+        		outwriterSoundData.flush();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
     		}
-    		else{
-    			if (Light_con > Wifi_con){
-        			Result = Light_Result;
-        			Result_con = Light_con * (1-Wifi_con);	
-    			}
-    			else{
-        			Result = Wifi_Result;
-        			Result_con = Wifi_con * (1-Light_con);		
-    			}
-    		}	
-    	}
-    	
-    	String Str_result = device_ID+" "+incoming_number+" "+Integer.toString(Result) + " "+Double.toString(Result_con);
-    	return Str_result;
-    		   	
+            
+            
+        }
+       
     }
-    
-//    private void WriteResult(String str_detect_result){
-//    	
-//		if(ResultFile.exists()){
-//			  
-//			  try{
-//	    		
-//				  foutResult = new FileOutputStream(ResultFile,true);
-//				  outwriterResult= new OutputStreamWriter(foutResult);
-//			
-//			  } catch(Exception e)
-//			  {
-//
-//			  }
-//		}
-//		
-//		try {
-//			outwriterResult.append((str_detect_result+"\n"));
-//		} catch (IOException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
-//		try {
-//			outwriterResult.flush();
-//			outwriterResult.close();
-//			foutResult.close();
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//    	    	
-//    }
-    
+
+    private void stopRecording() {
+        // stops the recording activity
+        if (null != record) {
+            isRecording = false;
+            record.stop();
+            record.release();
+            record = null;
+
+            recordingThread = null;
+        }
+    }
+        
     private final SensorEventListener LightSensorListener= new SensorEventListener(){
 
     	@Override
@@ -958,6 +711,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     	@Override
     	public void onSensorChanged(SensorEvent event) {
     		if(event.sensor.getType() == Sensor.TYPE_LIGHT){
+    			
+   			
     			double lightvalue = 0.0;
     			int Wifi_RSSI=0;
     			int UsefulFlag = 0;
@@ -966,15 +721,17 @@ public class MyCallReceiver extends BroadcastReceiver {
     			String Str_Detect_result;
     			long timeSta = System.currentTimeMillis();
     			String curTimeStr = ""+timeSta+";   ";
-    			Log.d(TAG, curTimeStr);
+    			Log.d("light sensor change:", curTimeStr);
     			int DaytimeFlag = 0;
     			Calendar rightNow = Calendar.getInstance();
 				int Hours = rightNow.get(Calendar.HOUR_OF_DAY);
 				int Minutes = rightNow.get(Calendar.MINUTE);
 				Double CurrentTime = (double) Hours + (double) (Minutes/60);
-				if ((CurrentTime > 7.5) && (CurrentTime < 19.5)){
+				if ((CurrentTime > 7.5) && (CurrentTime < 20)){
 					DaytimeFlag = 1;
 				}
+				
+				
     			
     			if (lightValue.size()==5){
    				
@@ -1001,39 +758,50 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    				if (DaytimeFlag==1) {
+    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
+    				//if ((Audio_start==0) && (EndingCallFlag !=3))
+    	            {
+    	            	Audio_start = 1;
+//    	        		startRecording();
+//    	        		try {
+//    	        		    Thread.sleep(100);
+//    	        		} catch (InterruptedException e) {
+//    	        		    // TODO Auto-generated catch block
+//    	        		    e.printStackTrace();
+//    	        		}
+//    	        		startEmitting();
+//    	        		try {
+//    	        		    Thread.sleep(800);
+//    	        		} catch (InterruptedException e) {
+//    	        		    // TODO Auto-generated catch block
+//    	        		    e.printStackTrace();
+//    	        		}
+//    	        		stopEmitting();
+//    	        		stopRecording();
+    	                Audio_flag = 1;
+    	            }
     				
-    					if ((B_Sum <3) || (G_Sum < 3)){
-    						Detect_result = 2;
-    						Detect_confidence = 0.0;
-    						Str_Detect_result = device_ID+" "+incoming_number+" "+Integer.toString(Detect_result) + " "+ Double.toString(Detect_confidence);
-    					}
-    					else{
-    						Str_Detect_result = svmPredictResult(Light_Sum,R_Sum,G_Sum,B_Sum,W_Sum);
-    						Log.d(TAG, Str_Detect_result);
-    									
-    					}
-    				}
-    				else{
-    					Str_Detect_result = NightPredict(Light_Sum,Wifi_Sum);	
-    				}
-    				writeFinalJSON(outwriterAllInfo,timeSta,"Result",Str_Detect_result);
-    				
-    				
-    				
-    				
-    				if (EndingCallFlag == 1)
-    				{
-    					unregisterLightSensor();
-    					unregisterProxiSensor();
-    					
-    				}
-    				if (EndingCallFlag ==0)
-    				{
-    					unregisterLightSensor();	
-    				}
-    			
-    				
+    				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
+    				   
+    				Log.d("get Ave info","get Ave info");
+    				Log.d("call type", String.valueOf(CallType));
+             
+                    sendFinalJSON(CallType,Light_RGB_Wifi,0);
+                   
+                    
+
+                    
+                    if (EndingCallFlag ==3){
+                    	
+                    	unregisterLightSensor();
+                    	Log.d("unregister proximity", "unregister proximity"+String.valueOf(EndingCallFlag));
+                    }
+                    else{
+                    	unregisterProxiSensor();
+						unregisterLightSensor();
+						Log.d("unregister light sensor", "unregister light"+String.valueOf(EndingCallFlag));
+                    }
+    			 					
     			}
 
     			
@@ -1042,7 +810,6 @@ public class MyCallReceiver extends BroadcastReceiver {
 	            Log.d(TAG, String.valueOf(lightvalue));
 	            //lightValue.add(lightvalue);
 				
-
     			SupplicantState supState; 
     			
     			wifiInfo = wifiManager.getConnectionInfo();
@@ -1053,8 +820,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	            Log.d(TAG, String.valueOf(wifiInfo.getRssi()));
 	            Wifi_RSSI = wifiInfo.getRssi();
 	            //WifiValue.add(Wifi_RSSI);
-
-
+	       
     			try {
 					bufferedReader = new BufferedReader(new FileReader(InputRGBFile));
 				} catch (FileNotFoundException e2) {
@@ -1079,8 +845,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 							double tmp_B = (Double.parseDouble(tmp_RGB[2])) * tmp_time;
 							double tmp_W = (Double.parseDouble(tmp_RGB[3])) * tmp_time;
 							
-							double flag = tmp_R/lightvalue;
-							if (flag < 1)
+							if (lightvalue==0)
 							{
 								lightValue.add(lightvalue);
 								WifiValue.add(Wifi_RSSI);
@@ -1090,8 +855,23 @@ public class MyCallReceiver extends BroadcastReceiver {
 								WValue.add(tmp_W);
 								Log.d(TAG, line);
 								UsefulFlag = 1;
-								
 							}
+							else
+							{
+								double flag = tmp_R / lightvalue;
+								if (flag < 1) {
+									lightValue.add(lightvalue);
+									WifiValue.add(Wifi_RSSI);
+									RValue.add(tmp_R);
+									GValue.add(tmp_G);
+									BValue.add(tmp_B);
+									WValue.add(tmp_W);
+									Log.d(TAG, line);
+									UsefulFlag = 1;
+
+								}
+							}
+							
 							
 						}
 					} catch (IOException e) {
@@ -1105,9 +885,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				if (UsefulFlag==1){
+				if ((UsefulFlag==1) && (RecordFlag==1)){
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
-					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);	
+					Log.d("Light RGB wifi", Light_RGB_Wifi);
+					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);
+					
+					Log.d("call add","calladd");
+					sendJSON(CallType,timeSta,"rawData",Light_RGB_Wifi);
+
 				}
 				
     		}
@@ -1125,18 +910,155 @@ public class MyCallReceiver extends BroadcastReceiver {
     	@Override
     	public void onSensorChanged(SensorEvent event) {
     		if(event.sensor.getType() == Sensor.TYPE_PROXIMITY){
-    			long timeSta = System.currentTimeMillis();
-    			String curTimeStr = ""+timeSta+";   ";
+    			
+    			proxi_time = System.currentTimeMillis();
+    			cur_proxi_time = proxi_time;
+    			stop_proxi_time = proxi_time + 1500;
+    			stop_proxi_time_end = cur_proxi_time + 1500;
+    			stop_proxi_time_end2 = cur_proxi_time + 4000;
+    			String curTimeStr = ""+proxi_time+";   ";
     			ReadProxi = event.values[0];
-    			Log.d(TAG, String.valueOf(ReadProxi));
+    			
+    			Log.d("proxi count",String.valueOf(proxi_count));
+    			Log.d("proxi value", String.valueOf(ReadProxi));
+    			Log.d("proxi time",String.valueOf(proxi_time));
+    			Log.d("cur proxi time",String.valueOf(cur_proxi_time));
+    			Log.d("stop_proxi_time_end",String.valueOf(stop_proxi_time_end));
+    			Log.d("stop_proxi_time",String.valueOf(stop_proxi_time));
+    			Log.d("RecordFlag",String.valueOf(RecordFlag));
+    			Log.d("Endingcallflag", String.valueOf(EndingCallFlag));
+    			
+    			if (ReadProxi<1)
+    			{
+    			
+    			}
+    			
         		if (ReadProxi>1)
         		{	
-        			if (RecordFlag == 0)
+        			if (( EndingCallFlag == 1))
         			{
-        				registerLightSensor();
-        				RecordFlag = 1;
+        				if (RecordFlag ==1){
+            				if (proxiThread!= null)
+            				{
+            					if (!proxiThread.isInterrupted());
+            					{
+            						proxiThread.interrupt();
+            						proxiThread = null;
+            						Log.d("stop thread", "stop proxithread registed light sensor");     						
+            					}
+            				}
+        					
+        				}
+						if (RecordFlag == 0) {
+			    			if (proxi_thread_start ==0)
+			    			{
+			    				proxi_thread_start = 1;
+			    				Log.d("start proxithread","first start proxithread");
+			    				proxiThread = new Thread() {
+
+			    					public void run() {
+			    						while(!Thread.interrupted())
+			    					    {
+				    						while (true )
+				    						{
+				    							if ((cur_proxi_time > stop_proxi_time_end) && (ReadProxi>1))
+				    							{
+					    							Log.d("cur proxi time in EndingCallFlag 1", String.valueOf(cur_proxi_time));
+					    							Log.d("stop_proxi_time end in EndingCallFlag 1", String.valueOf(stop_proxi_time_end));
+					    							Log.d("readProxi",String.valueOf(ReadProxi));
+				    								break;
+				    							}
+				    							cur_proxi_time = System.currentTimeMillis();
+//				    							Log.d("cur proxi time in thread", String.valueOf(cur_proxi_time));
+//				    							Log.d("stop_proxi_time in thread", String.valueOf(stop_proxi_time));
+				    						
+				    						}
+
+				    						RecordFlag = 1;
+				    						Log.d("RecordFlag in thread",String.valueOf(RecordFlag));
+				    						if (register_light==0)
+				    						{
+				    							register_light = 1;
+				    							Log.d("register light in first thread","register light in first thread");
+				    							registerLightSensor();
+
+				    						}
+				    			
+
+			    					    }
+
+			    				
+			    					}
+			    				};
+			    				proxiThread.start();
+			    			}							
+						}
+        			}
+        			
+
+        			if (EndingCallFlag == 2)
+        			{
+        				if (RecordFlag ==1){
+            				if (proxiThread!= null)
+            				{
+            					if (!proxiThread.isInterrupted());
+            					{
+            						proxiThread.interrupt();
+            						proxiThread = null;
+            						Log.d("stop thread", "stop proxithread registed light sensor");     						
+            					}
+            				}
+        					
+        				}
+						if (RecordFlag == 0) {
+			    			if (proxi_thread_start ==0)
+			    			{
+			    				proxi_thread_start = 1;
+			    				Log.d("start proxithread","first start proxithread");
+			    				proxiThread = new Thread() {
+
+			    					public void run() {
+			    						while(!Thread.interrupted())
+			    					    {
+				    						while (true )
+				    						{
+				    							if ((cur_proxi_time > stop_proxi_time) && (ReadProxi>1))
+				    							{
+					    							Log.d("cur proxi time in thread", String.valueOf(cur_proxi_time));
+					    							Log.d("stop_proxi_time in thread", String.valueOf(stop_proxi_time));
+					    							Log.d("readProxi",String.valueOf(ReadProxi));
+				    								break;
+				    							}
+				    							cur_proxi_time = System.currentTimeMillis();
+//				    							Log.d("cur proxi time in thread", String.valueOf(cur_proxi_time));
+//				    							Log.d("stop_proxi_time in thread", String.valueOf(stop_proxi_time));
+				    						
+				    						}
+
+				    						RecordFlag = 1;
+				    						Log.d("RecordFlag in thread",String.valueOf(RecordFlag));
+				    						if (register_light==0)
+				    						{
+				    							register_light = 1;
+				    							Log.d("register light in first thread","register light in first thread");
+				    							registerLightSensor();
+
+				    						}
+				    			
+
+			    					    }
+
+			    				
+			    					}
+			    				};
+			    				proxiThread.start();
+			    			}							
+						}
+        				
         			}	
         		}
+        		
+        		proxi_count = proxi_count + 1;
 	            try {
 	            	outwriterProxi.append(curTimeStr);
 	    		} catch (IOException e1) {
@@ -1161,130 +1083,140 @@ public class MyCallReceiver extends BroadcastReceiver {
      
     }; 
     
+
     
-    public void writeJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
-    	   JSONObject object = new JSONObject();
-    	   try {
+    
+	public void writeJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
+		JSONObject object = new JSONObject();
+		try {
 
-    	      object.put("timestamp", timestamp);
-    	      object.put(tag, info);
-    	           result.put("raw"+String.valueOf(raw_counter),object);
-    	           raw_counter = raw_counter+1;
-    	      String content = object.toString() + "\n";
-    	      myWriter.append(content);
-    	           /*if(status.getStatusCode() == HttpStatus.SC_OK){
-    	               ByteArrayOutputStream out = new ByteArrayOutputStream();
-    	               response.getEntity().writeTo(out);
-    	               out.close();
-    	               Log.d("DEBUG",out.toString());
-    	           }*/
-    	           //Log.i(TAG, content);
+			object.put("timestamp", timestamp);
+			object.put(tag, info);
+			String content = object.toString() + "\n";
+			myWriter.append(content);
+			Log.d("write json", content);
+		} catch (JSONException | IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void sendJSON(int Type, long timestamp, String tag, String info){
+		JSONObject tmp_object = new JSONObject();
+		Log.d("send json", "send json start");
+		try {
+			tmp_object.put("timestamp", timestamp);
+			tmp_object.put(tag, info);
+			if (Type==1)
+			{
+				callStart.put("raw" + String.valueOf(raw_counter), tmp_object);
+			}
+			if (Type==2)
+			{
+				callEnd.put("raw" + String.valueOf(raw_counter), tmp_object);
+			}
+			Log.d("send json", tmp_object.toString());
+			raw_counter = raw_counter + 1;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+	}
+	
 
-    	   } catch (JSONException | IOException e) {
-    	      e.printStackTrace();
-    	   }
-    	}
-    	   public void writeFinalJSON(OutputStreamWriter myWriter, long timestamp, String tag, String info) {
-    	       try {
-    	           JSONObject object = new JSONObject();
-    	           object.put("timestamp", timestamp);
-    	           object.put(tag, info);
-    	           Log.d("JACK",result.toString());
-    	           if(result.has("result")){
-    	               result.put("result2",object);
-    	           }
-    	           else {
-    	               result.put("result", object);
-    	           }
-    	           /*HttpClient httpClient = new DefaultHttpClient();
-    	           //Upload to GAE
-    	           StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-    	           StrictMode.setThreadPolicy(policy);
-    	           HttpPost request = new HttpPost("http://psychic-rush-755.appspot.com/upload");
-    	           //StringEntity params = new StringEntity(result.toString());
-    	           List<NameValuePair> parameters = new ArrayList<NameValuePair>();
-    	           parameters.add(new BasicNameValuePair("fruit", result.toString()));
-    	           request.setEntity(new UrlEncodedFormEntity(parameters));
-    	           HttpResponse response = httpClient.execute(request);
-    	           //Debug the returning message
-    	           StatusLine status = response.getStatusLine();
-    	           Log.d("JACK-Request", result.toString());
-    	           Log.d("JACK", String.valueOf(status.getStatusCode()));
-    	           if(status.getStatusCode() == HttpStatus.SC_OK){
-    	               ByteArrayOutputStream out = new ByteArrayOutputStream();
-    	               response.getEntity().writeTo(out);
-    	               out.close();
-    	               Log.d("Jack-Response",out.toString());
-    	           }
-    	           result = null;
-    	           result = new JSONObject();
-    	           raw_counter = 0;*/
-    	           Thread t = new Thread() {
+	public void sendFinalJSON(int Type,String info, int useAudio) {
+		try {
+			Log.d("start to send inent", "start to send inent");
+			if (Type == 1)
+			{
+				Log.d("start to send call start", "start to send call start");
+				callStart.put("AveValue", info);
+				callStart.put("callType", 1);
+				callStart.put("Audioflag", Audio_flag);
 
-    	               public void run() {
-    	                   Looper.prepare(); //For Preparing Message Pool for the child Thread
-    	                   HttpClient client = new DefaultHttpClient();
-    	                   HttpResponse response;
-    	                   JSONObject json = new JSONObject();
+        		
+				// Yuru added
+				Intent it = new Intent();
+				it.setAction("call_started");
+				String tmp_intent_mes = callStart.toString();
+				it.putExtra("callStart", tmp_intent_mes);
+				it.setClass(context, MyService.class);
+				context.startService(it);
+            	Log.d("send call start", "start intent");
+            	Log.d("send call start", tmp_intent_mes);
+            	callStart = null;
+            	callStart = new JSONObject();
 
-    	                   try {
-    	                       HttpPost post = new HttpPost("http://psychic-rush-755.appspot.com/upload");
-    	                       StringEntity se = new StringEntity( result.toString());
-    	                       se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
-    	                       post.setEntity(se);
-    	                       response = client.execute(post);
+//								
+//            	String tmp_intent_mes = callStart.toString();
+//            	
+//            	Intent i = new Intent("broadCastName");
+//                // Data you need to pass to activity
+//            	i.putExtra("message", tmp_intent_mes); 
+//            	
+//            	context.sendBroadcast(i);
 
-    	                   /*Checking response */
-    	                       if(response!=null){
-    	                           InputStream in = response.getEntity().getContent(); //Get the data in the entity
-    	                           String s = getStringFromInputStream(in);
-    	                           Log.d("Jack-Response",s);
-    	                       }
-    	                       result = null;
-    	                       result = new JSONObject();
-    	                       raw_counter = 0;
-    	                   } catch(Exception e) {
-    	                       e.printStackTrace();
-    	                   }
-    	               }
-    	           };
-    	           if(result.has("result2")) {
-    	               t.start();
-    	           }
+				
+			}
+			
+        	if (Type ==2)
+        	{
+        		
+        		
+        		callEnd.put("AveValue", info);
+        		callEnd.put("callType", 2);
+        		callEnd.put("Audioflag", Audio_flag);
+        		JSONObject tmp_object = new JSONObject();
+        		try {
+					tmp_object.put("deviceID", device_ID);
+					tmp_object.put("incomingNum", incoming_number);
+        		} catch (JSONException e) {
+        			e.printStackTrace();
+        		}
+        		
+        		callEnd.put("device_info", tmp_object);
+        		
+        		tmp_object= null;
+        		
+				// Yuru added
+				Intent it = new Intent();
+				it.setAction("call_ended");
+				String tmp_intent_mes = callEnd.toString();
+				it.putExtra("callEnd", tmp_intent_mes);
+				it.setClass(context, MyService.class);
+				context.startService(it);
+				Log.d("send call end", "end intent");
+      			Log.d("send call end", tmp_intent_mes);
+      			callEnd = null;
+      			callEnd = new JSONObject();
+    			raw_counter = 0;
+				
+				
+//				Intent i1 = new Intent(context, MainActivity.class);
+//				i1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//				i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+//				context.startActivity(i1);
+//                    
+//            	Intent i = new Intent("broadCastName");
+//                // Data you need to pass to activity
+//              	
+//      			JSONObject object1 = new JSONObject();
+//      			object1.put("deviceID", device_ID);
+//      			object1.put("incomingNum", incoming_number);
+//      			callEnd.put("device_info", object1);
+//
+//            	
+//            	String tmp_intent_mes = callEnd.toString();
+//            	i.putExtra("message", tmp_intent_mes); 
+//            	Log.d(TAG, "successfully intent");
+//            	context.sendBroadcast(i);
+      			
+      			
 
-
-
-    	       }
-    	       catch (Exception e){
-    	           e.printStackTrace();
-    	       }
-    	   }
-    	   private static String getStringFromInputStream(InputStream is) {
-
-    		    BufferedReader br = null;
-    		    StringBuilder sb = new StringBuilder();
-
-    		    String line;
-    		    try {
-
-    		        br = new BufferedReader(new InputStreamReader(is));
-    		        while ((line = br.readLine()) != null) {
-    		            sb.append(line);
-    		        }
-
-    		    } catch (IOException e) {
-    		        e.printStackTrace();
-    		    } finally {
-    		        if (br != null) {
-    		            try {
-    		                br.close();
-    		            } catch (IOException e) {
-    		                e.printStackTrace();
-    		            }
-    		        }
-    		    }
-
-    		    return sb.toString();
-
-    		}
+            	
+        	}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	
 }

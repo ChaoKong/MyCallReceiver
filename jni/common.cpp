@@ -9,7 +9,7 @@ void debug(const char *s,...)
     char buffer[debug_message_max];
 	vsprintf(buffer,s,va); 
     va_end(va); 
-	DEBUG_MACRO(buffer);
+	//DEBUG_MACRO(buffer);
 }
 
 
