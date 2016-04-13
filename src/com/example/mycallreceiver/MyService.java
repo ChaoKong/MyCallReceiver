@@ -53,7 +53,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     public int calculate_mode2 = 0;
     public int calculate_mode = 0;
     
-    //  0- default; 1- RGB; 2 - night predict ; 3 - > 5000; 4 - audio test; 5 - no light and wifi
+    //  0- default; 1- RGB; 2 - night predict ; 3 - > 5000; 4 - audio test; 5 - no light and wifi; 6 - no RGB, daytime with ligth value and wifi value;
     
     public String Cmd_svm_scale;
     public String Cmd_svm_predict;
@@ -129,6 +129,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     public String location_tmp;
     
     JSONObject location1 = null;
+    public int RGBAvailable = 0;
 
 	public MyService() {
 		super("MyService");
@@ -143,6 +144,10 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    context = this.getApplicationContext();
 	    root = android.os.Environment.getExternalStorageDirectory();
 		dir = new File (root.getAbsolutePath() + "/CallDetection");
+		if (dir == null){
+			Log.d("fail to create dir", dir.toString());
+			
+		}
 		dir.mkdirs();
 		
     	// Create an instance of GoogleAPIClient.
@@ -358,6 +363,8 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		try {
 			AveValue = tmp_call.getString("AveValue");
 			Log.d("Avevalue", AveValue);
+			RGBAvailable = tmp_call.getInt("RGBAvailable");
+			Log.d("RGBAvailable", String.valueOf(RGBAvailable));
 	    	String[] splitStr_AveValue = AveValue.split("\\s+");
 	    	Light_Sum = Double.parseDouble(splitStr_AveValue[0]);
 	    	R_Sum = Double.parseDouble(splitStr_AveValue[1]);
@@ -370,11 +377,20 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			int Hours = rightNow.get(Calendar.HOUR_OF_DAY);
 			int Minutes = rightNow.get(Calendar.MINUTE);
 			Double CurrentTime = (double) Hours + (double) (Minutes/60);
-			if ((CurrentTime > 7.5) && (CurrentTime < 20.5)){
-				DaytimeFlag = 1;
+			
+			if (RGBAvailable == 1){
+				if ((CurrentTime > 7.5) && (CurrentTime < 20.5)) {
+					DaytimeFlag = 1;
+				}
+			}
+			else{
+				if ((CurrentTime > 7.5) && (CurrentTime < 20)) {
+					DaytimeFlag = 1;
+				}
+				
 			}
 			String result_str="";
-	    	if ((DaytimeFlag==1) && (Light_Sum>1) && (R_Sum>1) && (G_Sum>1) && (B_Sum>1))
+	    	if ((DaytimeFlag==1) && (Light_Sum>1) && (R_Sum>1) && (G_Sum>1) && (B_Sum>1) && (RGBAvailable==1))
 	    	{
 	    		if (Light_Sum > 5000)
 	    		{
@@ -386,8 +402,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    		}
 	    		
 	    	}
-	    	else
+	    	else if ((DaytimeFlag==1) && (RGBAvailable==0))
 	    	{
+	    		result_str = DaytimePredict(Light_Sum,Wifi_Sum);
+	    	}
+	    	else{
 	    		result_str = NightPredict(Light_Sum,Wifi_Sum);
 	    	}
 	    	Log.d("result string", result_str);
@@ -679,6 +698,78 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
 		Str_return_result = Integer.toString(Result) + " " + Double.toString(Result_con);
 		calculate_mode = 2;
+		if ((Wifi_Sum < (-105)) && (Light_Sum < 2)) {
+			Str_return_result = "0" +" "+"0.0";
+			calculate_mode = 5;
+		}
+		return Str_return_result;
+	   	
+    }
+    
+    
+    private String DaytimePredict(double Light_Sum, double Wifi_Sum){
+    	
+    	double Light_threshold1 = 4000;
+    	double Light_threshold2 = 2000;
+    	double Wifi_threshold = -70;
+    	
+    	int Result = 0;
+    	double Result_con = 0.0;
+    	int Light_Result = 0;
+    	double Light_con = 0.0;
+    	int Wifi_Result = 0;
+    	double Wifi_con = 0.0;
+    	String Str_return_result;
+
+		if (Light_Sum > Light_threshold1) {
+			Light_Result = 1;
+			Light_con = 1.0;
+		} else {
+			if (Light_Sum > Light_threshold2)
+			{
+				Light_Result = 1;
+				Light_con = (( Light_Sum - Light_threshold1) / Light_threshold1);
+			}
+			else
+			{
+				Light_Result = -1;
+				Light_con = (( Light_threshold1 - Light_Sum) / Light_threshold1);
+			}
+
+		}
+
+		if (Wifi_Sum <(-100)) {
+			Wifi_Result = 0;
+		} else {
+			if (Wifi_Sum > (Wifi_threshold)) {
+				Wifi_Result = -1;
+				Wifi_con = (Wifi_Sum - Wifi_threshold) / Math.abs(Wifi_threshold) + 0.6;
+			} else {
+				Wifi_Result = 1;
+				Wifi_con = (Wifi_threshold - Wifi_Sum) / Math.abs(Wifi_threshold) + 0.6;
+			}
+		}
+
+		if (Wifi_Result == 0) {
+			Result = Light_Result;
+			Result_con = Light_con;
+		} else {
+			if (Light_Result == Wifi_Result) {
+				Result = Light_Result;
+				Result_con = 1 - (1 - Light_con) * (1 - Wifi_con);
+			} else {
+				if (Light_con > Wifi_con) {
+					Result = Light_Result;
+					Result_con = Light_con * (1 - Wifi_con);
+				} else {
+					Result = Wifi_Result;
+					Result_con = Wifi_con * (1 - Light_con);
+				}
+			}
+		}
+
+		Str_return_result = Integer.toString(Result) + " " + Double.toString(Result_con);
+		calculate_mode = 6;
 		if ((Wifi_Sum < (-105)) && (Light_Sum < 2)) {
 			Str_return_result = "0" +" "+"0.0";
 			calculate_mode = 5;

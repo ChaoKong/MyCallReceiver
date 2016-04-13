@@ -189,6 +189,10 @@ public class MyCallReceiver extends BroadcastReceiver {
     
     public int CallType = 0;
     
+    public int RGBAvailabe = 0;
+    
+    StringBuilder finalString = null;
+    
     
 	
 
@@ -350,7 +354,13 @@ public class MyCallReceiver extends BroadcastReceiver {
 		//mediaPlayer.setVolume(0.5f, 0.5f);
 		InputRGBFile = new File("/sys/devices/virtual/sensors/light_sensor/raw_data");
 		
-
+		
+		RGBAvailabe = 0;
+		if (InputRGBFile.exists())
+		{
+			RGBAvailabe = 1;
+			
+		}
 		
 		
         wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -574,6 +584,8 @@ public class MyCallReceiver extends BroadcastReceiver {
         
 
     private void startEmitting(){
+    	am.setStreamVolume(AudioManager.STREAM_MUSIC,10,0);
+    	mediaPlayer.setVolume(1.0f, 1.0f);
     	mediaPlayer.start();	
     }
     
@@ -758,27 +770,28 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
-    				//if ((Audio_start==0) && (EndingCallFlag !=3))
+    	            //if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
+    				if ((Audio_start==0) && (EndingCallFlag ==1))
     	            {
     	            	Audio_start = 1;
-//    	        		startRecording();
-//    	        		try {
-//    	        		    Thread.sleep(100);
-//    	        		} catch (InterruptedException e) {
-//    	        		    // TODO Auto-generated catch block
-//    	        		    e.printStackTrace();
-//    	        		}
-//    	        		startEmitting();
-//    	        		try {
-//    	        		    Thread.sleep(800);
-//    	        		} catch (InterruptedException e) {
-//    	        		    // TODO Auto-generated catch block
-//    	        		    e.printStackTrace();
-//    	        		}
-//    	        		stopEmitting();
-//    	        		stopRecording();
-    	                Audio_flag = 1;
+    	        		startRecording();
+    	        		try {
+    	        		    Thread.sleep(100);
+    	        		} catch (InterruptedException e) {
+    	        		    // TODO Auto-generated catch block
+    	        		    e.printStackTrace();
+    	        		}
+    	        		startEmitting();
+    	        		try {
+    	        		    Thread.sleep(1000);
+    	        		} catch (InterruptedException e) {
+    	        		    // TODO Auto-generated catch block
+    	        		    e.printStackTrace();
+    	        		}
+ 
+    	        		stopEmitting();
+    	        		stopRecording();
+    	                //Audio_flag = 1;
     	            }
     				
     				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
@@ -819,47 +832,33 @@ public class MyCallReceiver extends BroadcastReceiver {
 	            
 	            Log.d(TAG, String.valueOf(wifiInfo.getRssi()));
 	            Wifi_RSSI = wifiInfo.getRssi();
+	            finalString = new StringBuilder();
 	            //WifiValue.add(Wifi_RSSI);
-	       
-    			try {
-					bufferedReader = new BufferedReader(new FileReader(InputRGBFile));
-				} catch (FileNotFoundException e2) {
-					// TODO Auto-generated catch block
-					e2.printStackTrace();
-				}
-    			
-    			StringBuilder finalString  = new StringBuilder();
-    			
-    			if (bufferedReader !=null)
-    			{
-    				String line;
-    				try {
-						while ((line = bufferedReader.readLine()) != null) {
-							
-							finalString.append(line);
-							String[] tmp_RGB = line.split(",");
-							int tmp_I = 3 - Integer.parseInt(tmp_RGB[5]);
-							double tmp_time = Math.pow(4, tmp_I);
-							double tmp_R = (Double.parseDouble(tmp_RGB[0])) * tmp_time;
-							double tmp_G = (Double.parseDouble(tmp_RGB[1])) * tmp_time;
-							double tmp_B = (Double.parseDouble(tmp_RGB[2])) * tmp_time;
-							double tmp_W = (Double.parseDouble(tmp_RGB[3])) * tmp_time;
-							
-							if (lightvalue==0)
-							{
-								lightValue.add(lightvalue);
-								WifiValue.add(Wifi_RSSI);
-								RValue.add(tmp_R);
-								GValue.add(tmp_G);
-								BValue.add(tmp_B);
-								WValue.add(tmp_W);
-								Log.d(TAG, line);
-								UsefulFlag = 1;
-							}
-							else
-							{
-								double flag = tmp_R / lightvalue;
-								if (flag < 1) {
+	            if (RGBAvailabe==1) {
+					try {
+						bufferedReader = new BufferedReader(new FileReader(InputRGBFile));
+					} catch (FileNotFoundException e2) {
+						// TODO Auto-generated catch block
+						e2.printStackTrace();
+					}
+
+					
+
+					if (bufferedReader != null) {
+						String line;
+						try {
+							while ((line = bufferedReader.readLine()) != null) {
+
+								finalString.append(line);
+								String[] tmp_RGB = line.split(",");
+								int tmp_I = 3 - Integer.parseInt(tmp_RGB[5]);
+								double tmp_time = Math.pow(4, tmp_I);
+								double tmp_R = (Double.parseDouble(tmp_RGB[0])) * tmp_time;
+								double tmp_G = (Double.parseDouble(tmp_RGB[1])) * tmp_time;
+								double tmp_B = (Double.parseDouble(tmp_RGB[2])) * tmp_time;
+								double tmp_W = (Double.parseDouble(tmp_RGB[3])) * tmp_time;
+
+								if (lightvalue == 0) {
 									lightValue.add(lightvalue);
 									WifiValue.add(Wifi_RSSI);
 									RValue.add(tmp_R);
@@ -868,33 +867,55 @@ public class MyCallReceiver extends BroadcastReceiver {
 									WValue.add(tmp_W);
 									Log.d(TAG, line);
 									UsefulFlag = 1;
+								} else {
+									double flag = tmp_R / lightvalue;
+									if (flag < 1) {
+										lightValue.add(lightvalue);
+										WifiValue.add(Wifi_RSSI);
+										RValue.add(tmp_R);
+										GValue.add(tmp_G);
+										BValue.add(tmp_B);
+										WValue.add(tmp_W);
+										Log.d(TAG, line);
+										UsefulFlag = 1;
 
+									}
 								}
+
 							}
-							
-							
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
+					}
+					try {
+						bufferedReader.close();
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-    			}
-				try {
-					bufferedReader.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				if ((UsefulFlag==1) && (RecordFlag==1)){
+	            }
+	            else{
+					lightValue.add(lightvalue);
+					WifiValue.add(Wifi_RSSI);
+					RValue.add(0.0);
+					GValue.add(0.0);
+					BValue.add(0.0);
+					WValue.add(0.0);
+					UsefulFlag = 1;	
+	            }
+
+				if ((UsefulFlag==1) && (RecordFlag==1)) {
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
 					Log.d("Light RGB wifi", Light_RGB_Wifi);
 					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);
 					
 					Log.d("call add","calladd");
 					sendJSON(CallType,timeSta,"rawData",Light_RGB_Wifi);
+					finalString = null;
 
 				}
-				
+		
     		}
     	}
     };
@@ -914,7 +935,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     			proxi_time = System.currentTimeMillis();
     			cur_proxi_time = proxi_time;
     			stop_proxi_time = proxi_time + 1500;
-    			stop_proxi_time_end = cur_proxi_time + 1500;
+    			stop_proxi_time_end = cur_proxi_time + 1000;
     			stop_proxi_time_end2 = cur_proxi_time + 4000;
     			String curTimeStr = ""+proxi_time+";   ";
     			ReadProxi = event.values[0];
@@ -1116,6 +1137,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			}
 			Log.d("send json", tmp_object.toString());
 			raw_counter = raw_counter + 1;
+			Log.d("raw_counter in sendjson", String.valueOf(raw_counter));
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -1131,6 +1153,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 				callStart.put("AveValue", info);
 				callStart.put("callType", 1);
 				callStart.put("Audioflag", Audio_flag);
+				Log.d("RGBAvailable", String.valueOf(RGBAvailabe));
+				callStart.put("RGBAvailable", RGBAvailabe);
 
         		
 				// Yuru added
@@ -1164,6 +1188,8 @@ public class MyCallReceiver extends BroadcastReceiver {
         		callEnd.put("AveValue", info);
         		callEnd.put("callType", 2);
         		callEnd.put("Audioflag", Audio_flag);
+        		Log.d("RGBAvailable", String.valueOf(RGBAvailabe));
+        		callEnd.put("RGBAvailable", RGBAvailabe);
         		JSONObject tmp_object = new JSONObject();
         		try {
 					tmp_object.put("deviceID", device_ID);
