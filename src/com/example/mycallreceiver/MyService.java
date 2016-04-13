@@ -346,6 +346,8 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+    	Log.d("Process audio", "Process audio");
+    	ProcessAudio();
     	if (audio_in_use == 0)
     	{
     		Log.d("process light", "process light");
@@ -459,11 +461,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	
     	String Str_return_result = "";
 		String Str_dir = dir + "/";
-		String Str_rawdata = Str_dir + "SoundData.txt";
+		String Str_rawdata = Str_dir + "call4_0412_Sound3.txt";
 		String Str_chirpfile = Str_dir + "chirp_file";
 		String Str_model = Str_dir + "model_audio";
 		String Str_range = Str_dir + "range_audio";
-		String Str_test = Str_dir + "AudioTestInput";
+		String Str_test = Str_dir + "Feature_call4_0412_Sound3.txt";
 		String Str_scale = Str_dir + "AudioTestInput_scale";
 		String Str_result = Str_dir + "AudioDetect_result";
 		Cmd_get_feature = Str_rawdata + " " + Str_chirpfile + " " + Str_test;
@@ -472,67 +474,68 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		
 		try {
 			processAudio(Cmd_get_feature);
+			Log.d("get feature of files", "get feature of files");
 		} catch (Exception e1)
 		{
 			e1.printStackTrace();
 		}
-		jniSvmScale(Cmd_svm_scale);
-		jniSvmPredict(Cmd_svm_predict);
-		Log.d("Audio test", "finish testing");
-		
-		File AudioResultFile = new File(Str_result);
-		BufferedReader bufferedReader_svm = null;
-		try {
-			bufferedReader_svm = new BufferedReader(new FileReader(AudioResultFile));
-		} catch (FileNotFoundException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
-
-		StringBuilder finalString = new StringBuilder();
-
-		if (bufferedReader_svm != null) {
-			String line;
-			try {
-				int count = 0;
-				while ((line = bufferedReader_svm.readLine()) != null) {
-					if (count == 0) {
-						count = 1;
-						continue;
-					}
-					finalString.append(line);
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		try {
-			bufferedReader_svm.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		Str_return_result = finalString.toString();
-		if (Str_return_result.length() > 6) {
-			String[] splitStr = Str_return_result.split("\\s+");
-			int Tmp_result = Integer.parseInt(splitStr[0]);
-			Double Tmp_con = 0.0;
-			if (Tmp_result == -1) {
-				Tmp_con = Double.parseDouble(splitStr[2]);
-			} else {
-				Tmp_con = Double.parseDouble(splitStr[1]);
-
-			}
-			Str_return_result = String.valueOf(Tmp_result) + " " + String.valueOf(Tmp_con);
-			Log.d("Audio test", Str_return_result);
-		} else {
-			Str_return_result = "0" +" "+ "0.0";
-		}
-		calculate_mode = 4;
-		addResults(Str_return_result,callType,calculate_mode);	
-		WriteResult(Str_return_result);
+//		jniSvmScale(Cmd_svm_scale);
+//		jniSvmPredict(Cmd_svm_predict);
+//		Log.d("Audio test", "finish testing");
+//		
+//		File AudioResultFile = new File(Str_result);
+//		BufferedReader bufferedReader_svm = null;
+//		try {
+//			bufferedReader_svm = new BufferedReader(new FileReader(AudioResultFile));
+//		} catch (FileNotFoundException e2) {
+//			// TODO Auto-generated catch block
+//			e2.printStackTrace();
+//		}
+//
+//		StringBuilder finalString = new StringBuilder();
+//
+//		if (bufferedReader_svm != null) {
+//			String line;
+//			try {
+//				int count = 0;
+//				while ((line = bufferedReader_svm.readLine()) != null) {
+//					if (count == 0) {
+//						count = 1;
+//						continue;
+//					}
+//					finalString.append(line);
+//				}
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+//		try {
+//			bufferedReader_svm.close();
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//
+//		Str_return_result = finalString.toString();
+//		if (Str_return_result.length() > 6) {
+//			String[] splitStr = Str_return_result.split("\\s+");
+//			int Tmp_result = Integer.parseInt(splitStr[0]);
+//			Double Tmp_con = 0.0;
+//			if (Tmp_result == -1) {
+//				Tmp_con = Double.parseDouble(splitStr[2]);
+//			} else {
+//				Tmp_con = Double.parseDouble(splitStr[1]);
+//
+//			}
+//			Str_return_result = String.valueOf(Tmp_result) + " " + String.valueOf(Tmp_con);
+//			Log.d("Audio test", Str_return_result);
+//		} else {
+//			Str_return_result = "0" +" "+ "0.0";
+//		}
+//		calculate_mode = 4;
+//		addResults(Str_return_result,callType,calculate_mode);	
+//		WriteResult(Str_return_result);
     }
 	
     private String svmPredictResult(double Light_Sum, double R_Sum, double G_Sum, double B_Sum, double W_Sum){
