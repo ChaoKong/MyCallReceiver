@@ -3,11 +3,11 @@
 //
 
 #include "getAudioFeature.h"
+#include "main.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
 #include "./DspFilters/Butterworth.h"
-
 
 namespace getAudioFeature {
 
@@ -53,7 +53,7 @@ namespace getAudioFeature {
         feature_filename = argv[3];
 
         int numSample = 0;
-        int rawaudioSignals[2000000];
+        int rawaudioSignals[200000];
         int value;
 
 
@@ -67,13 +67,12 @@ namespace getAudioFeature {
                 fprintf(stderr, "can't open file %s\n", sound_filename);
                 exit(1);
             }
-            printf("start raw sound file  %s\n", sound_filename);
         }
 
         while (fscanf(soundfile, "%d", &value) > 0) {
             rawaudioSignals[numSample] = value;
             numSample++;
-            if (numSample == 1999998) {
+            if (numSample == 199998) {
                 break;
             }
         }
@@ -131,14 +130,14 @@ namespace getAudioFeature {
 
         convCalculate(chirp, audio_signal, match_signal, numSample);
 
-//        FILE *outf_conv = fopen("convert1_0403_22_sound11.txt", "w");
-//
+        FILE *outf_conv = fopen("convert1_0403_22_sound11.txt", "w");
+
 //        for (int j = 0; j < numSample; j++) {
 //            //printf("%f\n", audio_signal[j]);
 //            fprintf(outf_conv, "%f  ", match_signal[j]);
 //        }
-//
-//
+
+
 //        printf("%d\n", numSample);
 
 //    FILE *outf = fopen("results1_0307_test2.txt", "w");
@@ -156,8 +155,8 @@ namespace getAudioFeature {
         int focus_duration = 900;
         int step = 100;
         int peak_threshold = 2000;
-        int threshold = 50000;
-        int threshold2 = 10000;
+        int threshold = 500000;
+        int threshold2 = 1000000;
 
         double tmp_whole_max = 0;
         int tmp_whole_max_index = 0;
@@ -259,7 +258,7 @@ namespace getAudioFeature {
         }
 
 
-        fprintf(featurefile, "0 ");
+        fprintf(featurefile, "-1 ");
         fprintf(featurefile, "1:%f ", Energy);
         fprintf(featurefile, "2:%d ", numPeaks);
         fprintf(featurefile, "3:%f ", mean_var);
