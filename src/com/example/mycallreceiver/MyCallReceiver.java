@@ -72,7 +72,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 
 	
 	private boolean isRecording = false;
-	int sampleRate = 44100;
+	int sampleRate = 48000;
     private Thread recordingThread = null;
     int BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
     int BytesPerElement = 2; // 2 bytes in 16bit format
@@ -350,7 +350,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 		
 		
 		am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-		mediaPlayer = MediaPlayer.create(context, R.raw.chirp22);
+		mediaPlayer = MediaPlayer.create(context, R.raw.chirp814);
 		//mediaPlayer.setVolume(0.5f, 0.5f);
 		InputRGBFile = new File("/sys/devices/virtual/sensors/light_sensor/raw_data");
 		
@@ -585,7 +585,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 
     private void startEmitting(){
     	am.setStreamVolume(AudioManager.STREAM_MUSIC,10,0);
-    	mediaPlayer.setVolume(1.0f, 1.0f);
+    	mediaPlayer.setVolume(0.6f, 0.6f);
     	mediaPlayer.start();	
     }
     
