@@ -359,6 +359,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 		if (InputRGBFile.exists())
 		{
 			RGBAvailabe = 1;
+			Log.d("RGB available", "RGB available");
 			
 		}
 		
@@ -727,7 +728,7 @@ public class MyCallReceiver extends BroadcastReceiver {
    			
     			double lightvalue = 0.0;
     			int Wifi_RSSI=0;
-    			int UsefulFlag = 0;
+    			int UsefulFlag = 1;
     			int Detect_result = 0;
     			double Detect_confidence = 0.0;
     			String Str_Detect_result;
@@ -747,6 +748,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     			
     			if (lightValue.size()==5){
    				
+    				
+    				Log.d("light value size is 5", "light value size is 5");
     				RecordFlag =0;
     				double Light_Sum = 0;
     				double R_Sum = 0;
@@ -770,8 +773,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
-    				//if ((Audio_start==0) && (EndingCallFlag ==1))
+    	            //if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
+    				if ((Audio_start==0) && (EndingCallFlag ==1))
     	            {
     	            	Audio_start = 1;
     	        		startRecording();
@@ -869,7 +872,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 									UsefulFlag = 1;
 								} else {
 									double flag = tmp_R / lightvalue;
-									if (flag < 1) {
+									if (flag < 1000) {
 										lightValue.add(lightvalue);
 										WifiValue.add(Wifi_RSSI);
 										RValue.add(tmp_R);
@@ -904,6 +907,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 					WValue.add(0.0);
 					UsefulFlag = 1;	
 	            }
+	            
+	            Log.d("light value size", String.valueOf(lightValue.size()));
 
 				if ((UsefulFlag==1) && (RecordFlag==1)) {
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
@@ -1123,7 +1128,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	
 	public void sendJSON(int Type, long timestamp, String tag, String info){
 		JSONObject tmp_object = new JSONObject();
-		Log.d("send json", "send json start");
+		Log.d("write json", "write json start");
 		try {
 			tmp_object.put("timestamp", timestamp);
 			tmp_object.put(tag, info);

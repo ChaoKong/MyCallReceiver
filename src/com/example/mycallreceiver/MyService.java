@@ -347,7 +347,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			e.printStackTrace();
 		}
     	Log.d("Process audio", "Process audio");
-    	ProcessAudio();
+    	//ProcessAudio();
     	if (audio_in_use == 0)
     	{
     		Log.d("process light", "process light");
