@@ -6,9 +6,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <android/log.h>
 #include "./DspFilters/Butterworth.h"
 
+
+#define ENABLE_DEBUG 0
+
+
+#if ENABLE_DEBUG
+#define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "inject-process", __VA_ARGS__))
+#else
+#define LOGD(format,args...)
+#endif
+
 namespace getAudioFeature {
+
+
+
 
     void convCalculate(const float y[301], double *sound, double *match_sound, int numSound);
 
@@ -40,6 +54,7 @@ namespace getAudioFeature {
             exit_with_help();
         }
 
+        LOGD( "start to get feature of audio file" );
 
         FILE *soundfile = NULL;
         FILE *chirpfile = NULL;
@@ -110,10 +125,10 @@ namespace getAudioFeature {
         }
 
 
-        Dsp::SimpleFilter<Dsp::Butterworth::BandPass<46>, 1> f;
-        f.setup(46,    // order
-                44100,// sample rate
-                14000, // center frequency
+        Dsp::SimpleFilter<Dsp::Butterworth::BandPass<5>, 1> f;
+        f.setup(5,    // order
+                48000,// sample rate
+                15000, // center frequency
                 3000);  // band width);
         f.process(numSample, &audio_signal);
 
@@ -153,9 +168,9 @@ namespace getAudioFeature {
         int f_end = 1500;
         int focus_duration = 900;
         int step = 100;
-        int peak_threshold = 2000;
-        int threshold = 500000;
-        int threshold2 = 1000000;
+        int peak_threshold = 200;
+        int threshold = 200000;
+        int threshold2 = 2000000;
 
         double tmp_whole_max = 0;
         int tmp_whole_max_index = 0;
@@ -257,7 +272,7 @@ namespace getAudioFeature {
         }
 
 
-        fprintf(featurefile, "-1 ");
+        fprintf(featurefile, "0 ");
         fprintf(featurefile, "1:%f ", Energy);
         fprintf(featurefile, "2:%d ", numPeaks);
         fprintf(featurefile, "3:%f ", mean_var);
