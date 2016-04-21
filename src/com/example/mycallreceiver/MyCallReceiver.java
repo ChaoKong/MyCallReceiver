@@ -773,8 +773,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    	            //if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
-    				if ((Audio_start==0) && (EndingCallFlag ==1))
+    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
+    				//if ((Audio_start==0) && (EndingCallFlag ==1))
     	            {
     	            	Audio_start = 1;
     	        		startRecording();

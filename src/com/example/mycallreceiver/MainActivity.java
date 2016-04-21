@@ -213,7 +213,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	}
     	mGoogleApiClient.connect();
 
-		final int[] mFiles = new int[] { R.raw.model6, R.raw.range6, R.raw.model_rm, R.raw.range_rm, R.raw.chirp_file };
+		final int[] mFiles = new int[] { R.raw.set1_model, R.raw.range_set1, R.raw.audio_model1, R.raw.audio_range1, R.raw.chirp14_file };
 		final CharSequence[] filenames = { "model_light", "range_light", "model_audio", "range_audio", "chirp_file" };
 		for (int i = 0; i < mFiles.length; i++) {
 			try {

@@ -10,11 +10,11 @@
 #include "./DspFilters/Butterworth.h"
 
 
-#define ENABLE_DEBUG 0
+#define ENABLE_DEBUG 1
 
 
 #if ENABLE_DEBUG
-#define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "inject-process", __VA_ARGS__))
+#define LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "getAudioFeature_RUN", __VA_ARGS__))
 #else
 #define LOGD(format,args...)
 #endif
