@@ -23,6 +23,7 @@ obj/local/armeabi/objs/jnilibsvm/getAudioFeature.o: \
  /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/memory.h \
  /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/stdio.h \
  /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/sources/cxx-stl/gnu-libstdc++/4.8/include/vector \
+ /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/android/log.h \
  jni/./DspFilters/Butterworth.h jni/./DspFilters/Common.h \
  /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/sources/cxx-stl/gnu-libstdc++/4.8/include/cassert \
  /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/sources/cxx-stl/gnu-libstdc++/4.8/include/cfloat \
@@ -85,6 +86,8 @@ jni/getAudioFeature.h:
 /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/stdio.h:
 
 /Users/chaokong/Documents/Android-ndk/android-ndk-r10e/sources/cxx-stl/gnu-libstdc++/4.8/include/vector:
+
+/Users/chaokong/Documents/Android-ndk/android-ndk-r10e/platforms/android-19/arch-arm/usr/include/android/log.h:
 
 jni/./DspFilters/Butterworth.h:
 
