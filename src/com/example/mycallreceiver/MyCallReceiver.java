@@ -48,6 +48,7 @@ import android.media.MediaRecorder;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -190,6 +191,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     public int CallType = 0;
     
     public int RGBAvailabe = 0;
+    
+    public int isS6 = 0;
     
     StringBuilder finalString = null;
     
@@ -438,6 +441,12 @@ public class MyCallReceiver extends BroadcastReceiver {
     	proxi_thread_start2 = 0;
     	callStart = null;
     	callEnd = null;
+    	
+       	String deviceModel = Build.MODEL;
+    	String S6 = "g920t";
+    	if (deviceModel.toLowerCase().contains(S6.toLowerCase())){
+    		isS6 =1;
+    	}
     	
 		
     	Log.i(TAG, "init successfully");
@@ -728,21 +737,11 @@ public class MyCallReceiver extends BroadcastReceiver {
    			
     			double lightvalue = 0.0;
     			int Wifi_RSSI=0;
-    			int UsefulFlag = 1;
-    			int Detect_result = 0;
-    			double Detect_confidence = 0.0;
-    			String Str_Detect_result;
     			long timeSta = System.currentTimeMillis();
     			String curTimeStr = ""+timeSta+";   ";
     			Log.d("light sensor change:", curTimeStr);
-    			int DaytimeFlag = 0;
-    			Calendar rightNow = Calendar.getInstance();
-				int Hours = rightNow.get(Calendar.HOUR_OF_DAY);
-				int Minutes = rightNow.get(Calendar.MINUTE);
-				Double CurrentTime = (double) Hours + (double) (Minutes/60);
-				if ((CurrentTime > 7.5) && (CurrentTime < 20)){
-					DaytimeFlag = 1;
-				}
+
+
 				
 				
     			
@@ -773,20 +772,22 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && (EndingCallFlag !=3)))
-    				//if ((Audio_start==0) && (EndingCallFlag ==1))
+    				Log.d("value of isS6", String.valueOf(isS6));
+    				
+    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && ((EndingCallFlag ==1)) && (isS6 ==1)))
+    				//if (((Audio_start==0) && (EndingCallFlag ==1)) && (isS6 ==1) )
     	            {
     	            	Audio_start = 1;
     	        		startRecording();
     	        		try {
-    	        		    Thread.sleep(100);
+    	        		    Thread.sleep(80);
     	        		} catch (InterruptedException e) {
     	        		    // TODO Auto-generated catch block
     	        		    e.printStackTrace();
     	        		}
     	        		startEmitting();
     	        		try {
-    	        		    Thread.sleep(1000);
+    	        		    Thread.sleep(750);
     	        		} catch (InterruptedException e) {
     	        		    // TODO Auto-generated catch block
     	        		    e.printStackTrace();
@@ -794,7 +795,7 @@ public class MyCallReceiver extends BroadcastReceiver {
  
     	        		stopEmitting();
     	        		stopRecording();
-    	                //Audio_flag = 1;
+    	                Audio_flag = 1;
     	            }
     				
     				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
@@ -810,12 +811,12 @@ public class MyCallReceiver extends BroadcastReceiver {
                     if (EndingCallFlag ==3){
                     	
                     	unregisterLightSensor();
-                    	Log.d("unregister proximity", "unregister proximity"+String.valueOf(EndingCallFlag));
+                    	Log.d("unregister light sensor", "unregister light"+String.valueOf(EndingCallFlag));
                     }
                     else{
                     	unregisterProxiSensor();
 						unregisterLightSensor();
-						Log.d("unregister light sensor", "unregister light"+String.valueOf(EndingCallFlag));
+						Log.d("unregister proximity", "unregister proximity"+String.valueOf(EndingCallFlag));
                     }
     			 					
     			}
@@ -861,29 +862,19 @@ public class MyCallReceiver extends BroadcastReceiver {
 								double tmp_B = (Double.parseDouble(tmp_RGB[2])) * tmp_time;
 								double tmp_W = (Double.parseDouble(tmp_RGB[3])) * tmp_time;
 
-								if (lightvalue == 0) {
-									lightValue.add(lightvalue);
-									WifiValue.add(Wifi_RSSI);
-									RValue.add(tmp_R);
-									GValue.add(tmp_G);
-									BValue.add(tmp_B);
-									WValue.add(tmp_W);
-									Log.d(TAG, line);
-									UsefulFlag = 1;
-								} else {
-									double flag = tmp_R / lightvalue;
-									if (flag < 1000) {
-										lightValue.add(lightvalue);
-										WifiValue.add(Wifi_RSSI);
-										RValue.add(tmp_R);
-										GValue.add(tmp_G);
-										BValue.add(tmp_B);
-										WValue.add(tmp_W);
-										Log.d(TAG, line);
-										UsefulFlag = 1;
+								
+								lightValue.add(lightvalue);
+								WifiValue.add(Wifi_RSSI);
+								RValue.add(tmp_R);
+								GValue.add(tmp_G);
+								BValue.add(tmp_B);
+								WValue.add(tmp_W);
+								Log.d(TAG, line);
+							
+										
 
-									}
-								}
+									
+								
 
 							}
 						} catch (IOException e) {
@@ -905,12 +896,12 @@ public class MyCallReceiver extends BroadcastReceiver {
 					GValue.add(0.0);
 					BValue.add(0.0);
 					WValue.add(0.0);
-					UsefulFlag = 1;	
+				
 	            }
 	            
 	            Log.d("light value size", String.valueOf(lightValue.size()));
 
-				if ((UsefulFlag==1) && (RecordFlag==1)) {
+				if   (RecordFlag==1){
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
 					Log.d("Light RGB wifi", Light_RGB_Wifi);
 					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);
@@ -1220,28 +1211,6 @@ public class MyCallReceiver extends BroadcastReceiver {
       			callEnd = new JSONObject();
     			raw_counter = 0;
 				
-				
-//				Intent i1 = new Intent(context, MainActivity.class);
-//				i1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//				i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-//				context.startActivity(i1);
-//                    
-//            	Intent i = new Intent("broadCastName");
-//                // Data you need to pass to activity
-//              	
-//      			JSONObject object1 = new JSONObject();
-//      			object1.put("deviceID", device_ID);
-//      			object1.put("incomingNum", incoming_number);
-//      			callEnd.put("device_info", object1);
-//
-//            	
-//            	String tmp_intent_mes = callEnd.toString();
-//            	i.putExtra("message", tmp_intent_mes); 
-//            	Log.d(TAG, "successfully intent");
-//            	context.sendBroadcast(i);
-      			
-      			
-
             	
         	}
 		} catch (Exception e) {

@@ -314,8 +314,8 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				Log.d("groundth", Ground_truth.toString());
 			}
 			
-	    	Log.d("Process audio", "Process audio");
-	    	ProcessAudio();
+//	    	Log.d("Process audio", "Process audio");
+//	    	ProcessAudio();
 			processInfo();	
 			//getLocation(callType);
 			Log.d("groundth", Ground_truth.toString());
@@ -357,7 +357,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	}
     	if (audio_in_use == 1)
     	{	Log.d("process audio", "process audio");
-    		ProcessLight();
+    		ProcessAudio();
     	}    	
     }
     
@@ -441,48 +441,29 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     }
     
     public void ProcessAudio(){
-//    	if ((end_call ==1) && (Light_Sum<2) && (Wifi_Sum== -127) && (audio_in_use==1)){
-//
-//
-//    		startRecording();
-//    		try {
-//    		    Thread.sleep(100);
-//    		} catch (InterruptedException e) {
-//    		    // TODO Auto-generated catch block
-//    		    e.printStackTrace();
-//    		}
-//    		startEmitting();
-//    		try {
-//    		    Thread.sleep(800);
-//    		} catch (InterruptedException e) {
-//    		    // TODO Auto-generated catch block
-//    		    e.printStackTrace();
-//    		}
-//    		stopEmitting();
-//    		stopRecording();
     	
     	String Str_return_result = "";
 		String Str_dir = dir + "/";
-		String Str_rawdata = Str_dir + "audio7_0418_s6_Sound1.txt";
+		String Str_rawdata = Str_dir + "SoundData.txt";
 		String Str_chirpfile = Str_dir + "chirp_file";
 		String Str_model = Str_dir + "model_audio";
 		String Str_range = Str_dir + "range_audio";
-		String Str_test = Str_dir + "Feature_audio7_0418_s6_Sound1.txt";
+		String Str_test = Str_dir + "Feature_SoundData.txt";
 		String Str_scale = Str_dir + "AudioTestInput_scale";
 		String Str_result = Str_dir + "AudioDetect_result";
 		Cmd_get_feature = Str_rawdata + " " + Str_chirpfile + " " + Str_test;
 		Cmd_svm_scale = "-r " + Str_range + " " + Str_test + " " + Str_scale;
 		Cmd_svm_predict = "-b 1 " + Str_scale + " " + Str_model + " " + Str_result;
-		Log.d("get feature of files", "get feature of files");
-		processAudio(Cmd_get_feature);
+//		Log.d("get feature of files", "get feature of files");
+//		processAudio(Cmd_get_feature);
 	
-//		try {
-//			processAudio(Cmd_get_feature);
-//			Log.d("get feature of files", "get feature of files");
-//		} catch (Exception e1)
-//		{
-//			e1.printStackTrace();
-//		}
+		try {
+			processAudio(Cmd_get_feature);
+			Log.d("get feature of files", "get feature of files");
+		} catch (Exception e1)
+		{
+			e1.printStackTrace();
+		}
 		jniSvmScale(Cmd_svm_scale);
 		jniSvmPredict(Cmd_svm_predict);
 		Log.d("Audio test", "finish testing");
@@ -735,12 +716,12 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			if (Light_Sum > Light_threshold2)
 			{
 				Light_Result = 1;
-				Light_con = (( Light_Sum - Light_threshold1) / Light_threshold1);
+				Light_con = (( Light_Sum - Light_threshold2) / Light_threshold2);
 			}
 			else
 			{
 				Light_Result = -1;
-				Light_con = (( Light_threshold1 - Light_Sum) / Light_threshold1);
+				Light_con = (( Light_threshold2 - Light_Sum) / Light_threshold2);
 			}
 
 		}
@@ -899,7 +880,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			}
 		}
 	    start_location_time = System.currentTimeMillis();
-	    stop_location_time = start_location_time + 10000;
+	    stop_location_time = start_location_time + 3000;
 	    Log.d("start_location_time start", String.valueOf(start_location_time));
 		Log.d("stop_location_time start", String.valueOf(stop_location_time));
     	
