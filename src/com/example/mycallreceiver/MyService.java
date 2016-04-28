@@ -923,6 +923,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							start_location_time = System.currentTimeMillis();
 						}
 						writeLocation();
+						Log.d(TAG, "interrupte location thread");
+						Thread.currentThread().interrupt();
+						return;
 				   }
 				}
 			};

@@ -184,15 +184,23 @@ public class MyCallReceiver extends BroadcastReceiver {
     public long stop_proxi_time_end2 = 0;
     public Thread proxiThread = null;
     public Thread proxiThread2 = null;
+    public Thread lightWaitThread = null;
     public int register_light = 0;
     public int proxi_thread_start = 0;
     public int proxi_thread_start2 = 0;
+    public int light_thread_start = 0;
+    public int send_final_json = 0;
+    
+    public long start_light_time = 0;
+    public long stop_light_time = 0;
+    public long cur_light_time = 0;
     
     public int CallType = 0;
     
     public int RGBAvailabe = 0;
     
     public int isS6 = 0;
+    public int isG4 = 0;
     
     StringBuilder finalString = null;
     
@@ -447,14 +455,25 @@ public class MyCallReceiver extends BroadcastReceiver {
     	register_light = 0;
     	proxi_thread_start = 0;
     	proxi_thread_start2 = 0;
+    	light_thread_start = 0;
+    	lightWaitThread = null;
+    	send_final_json = 0;
+    	
     	callStart = null;
     	callEnd = null;
     	
        	String deviceModel = Build.MODEL;
+       	Log.d(TAG,deviceModel);
     	String S6 = "g920t";
+    	String G4 = "lg";
     	if (deviceModel.toLowerCase().contains(S6.toLowerCase())){
     		isS6 =1;
     	}
+    	
+    	if (deviceModel.toLowerCase().contains(G4.toLowerCase())){
+    		isG4 =1;
+    	}
+    	
     	
 		
     	Log.i(TAG, "init successfully");
@@ -554,13 +573,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			}
 			
     	}      	
-	    lightValue.clear();
-	    RValue.clear();
-	    GValue.clear();
-	    BValue.clear();
-	    WValue.clear();
-	    TValue.clear();
-	    WifiValue.clear();
+
 	   	
     }
     
@@ -748,14 +761,113 @@ public class MyCallReceiver extends BroadcastReceiver {
     			long timeSta = System.currentTimeMillis();
     			String curTimeStr = ""+timeSta+";   ";
     			Log.d(TAG, curTimeStr);
+    			
+                if (EndingCallFlag != 3){
+                	
+                	unregisterProxiSensor();
+                	Log.d(TAG, "unregister proximity"+String.valueOf(EndingCallFlag));
+                }
+    			
+    			if (lightValue.size()==0)
+    			{
+    				start_light_time = timeSta;
+    				stop_light_time = timeSta + 800;
+    			}
+    			
 
+    			if ((light_thread_start ==0) && (isG4==1))
+    			{
+    				light_thread_start = 1;
+    				Log.d(TAG,"first start light");
+					Log.d(TAG, String.valueOf(start_light_time) + "  start light time in light thread");
+					Log.d(TAG, String.valueOf(stop_light_time)+ " stop light timein light thread");
+    				lightWaitThread = new Thread() {
 
-				
+    					public void run() {
+    						while(!Thread.interrupted())
+    					    {
+	    						while (true )
+	    						{
+	    							if ((cur_light_time > stop_light_time) || (send_final_json==1))
+	    							{
+		    							Log.d(TAG, String.valueOf(cur_light_time) + " in light thread");
+		    							Log.d(TAG, String.valueOf(stop_light_time)+ " in light thread");
+
+	    								break;
+	    							}
+	    							cur_light_time = System.currentTimeMillis();	    						
+	    						}
+
+	    						if (send_final_json !=1)
+	    						{
+	    							unregisterLightSensor();
+	    							Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag) +"   in light thread");
+	    							Log.d(TAG, "light size		"+String.valueOf(lightValue.size()));
+	    							for (int i = 0; i<lightValue.size(); i++ )
+	    							{
+	    								Log.d(TAG,"light value in lightvalue: "+String.valueOf(i)+"   "+String.valueOf(lightValue.get(i)));
+	    							}
+	    							if (lightValue.size()==0)
+	    							{	
+	    			    				String Light_RGB_Wifi = String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(-127);
+	    			    				   
+	    			    				Log.d(TAG,"get Ave info in light thread, all 0");
+	    			    				Log.d(TAG, String.valueOf(CallType));
+	    			             
+	    			                    sendFinalJSON(CallType,Light_RGB_Wifi);
+	    								
+	    							}
+	    							else{
+	    			    				double Light_Sum = 0;
+	    			    				double R_Sum = 0;
+	    			    				double G_Sum = 0;
+	    			    				double B_Sum = 0;
+	    			    				double W_Sum = 0;
+	    			    				double Wifi_Sum = 0;
+	    								int tmp_size = lightValue.size();
+	    								Log.d(TAG, String.valueOf(tmp_size)+"light value size");
+	    			    				for ( int i = 0; i<tmp_size; i++){
+	    			    					Light_Sum = Light_Sum + lightValue.get(i);
+	    			    					R_Sum = R_Sum + RValue.get(i);
+	    			    					G_Sum = G_Sum + GValue.get(i);
+	    			    					B_Sum = B_Sum + BValue.get(i);
+	    			    					W_Sum = W_Sum + WValue.get(i);
+	    			    					Wifi_Sum = Wifi_Sum + (double)WifiValue.get(i);	
+	    			    					
+	    			    				}
+	    			    				Light_Sum = Light_Sum/tmp_size;
+	    			    				R_Sum = R_Sum/tmp_size;
+	    			    				G_Sum = G_Sum/tmp_size;
+	    			    				B_Sum = B_Sum/tmp_size;
+	    			    				W_Sum = W_Sum/tmp_size;
+	    			    				Wifi_Sum = Wifi_Sum/tmp_size;
+	    			    				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
+	    			    				   
+	    			    				Log.d(TAG,"get Ave info in light thread");
+	    			    				Log.d(TAG, String.valueOf(CallType));
+	    			    				
+	    			    				
+	    			                    sendFinalJSON(CallType,Light_RGB_Wifi);
+	    							}
+	    						}
+	    						Log.d(TAG, "interrupte light thread");
+	    						Thread.currentThread().interrupt();
+	    						return;
+    					    }
+
+    				
+    					}
+    				};
+    				lightWaitThread.start();
+    			}				
 				
     			
     			if (lightValue.size()==5){
    				
-    				
+                    
+                    unregisterLightSensor();
+                    Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag));
+                    
     				Log.d(TAG, "light value size is 5");
     				RecordFlag =0;
     				double Light_Sum = 0;
@@ -811,22 +923,10 @@ public class MyCallReceiver extends BroadcastReceiver {
     				Log.d(TAG,"get Ave info");
     				Log.d(TAG, String.valueOf(CallType));
              
-                    sendFinalJSON(CallType,Light_RGB_Wifi,0);
+                    sendFinalJSON(CallType,Light_RGB_Wifi);
                    
-                    
 
-                    
-                    if (EndingCallFlag ==3){
-                    	
-                    	unregisterLightSensor();
-                    	Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag));
-                    }
-                    else{
-                    	unregisterProxiSensor();
-						unregisterLightSensor();
-						Log.d(TAG, "unregister proximity"+String.valueOf(EndingCallFlag));
-                    }
-    			 					
+ 					
     			}
 
     			
@@ -907,9 +1007,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 				
 	            }
 	            
-	            Log.d(TAG, String.valueOf(lightValue.size()));
+	            Log.d(TAG, String.valueOf(lightValue.size()) + "ligth size");
 
 				if   (RecordFlag==1){
+					
+					for (int i = 0; i<lightValue.size(); i++ )
+					{
+						Log.d(TAG,"light value in lightvalue: "+String.valueOf(i)+"   "+String.valueOf(lightValue.get(i)));
+					}
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
 					Log.d(TAG, Light_RGB_Wifi);
 					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);
@@ -939,7 +1044,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     			proxi_time = System.currentTimeMillis();
     			cur_proxi_time = proxi_time;
     			stop_proxi_time = proxi_time + 1500;
-    			stop_proxi_time_end = cur_proxi_time + 1500;
+    			stop_proxi_time_end = cur_proxi_time + 1000;
     			String curTimeStr = ""+proxi_time+";   ";
     			ReadProxi = event.values[0];
     			
@@ -951,6 +1056,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     			Log.d(TAG,String.valueOf(stop_proxi_time));
     			Log.d(TAG,String.valueOf(RecordFlag));
     			Log.d(TAG, String.valueOf(EndingCallFlag));
+    			Log.d(TAG,"start to read proxi");
     			
     			if (ReadProxi<1)
     			{
@@ -983,6 +1089,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			    					public void run() {
 			    						while(!Thread.interrupted())
 			    					    {
+			    							Log.d(TAG, "start to do while");
 				    						while (true )
 				    						{
 				    							if ((cur_proxi_time > stop_proxi_time_end) && (ReadProxi>1))
@@ -990,15 +1097,17 @@ public class MyCallReceiver extends BroadcastReceiver {
 					    							Log.d(TAG, String.valueOf(cur_proxi_time));
 					    							Log.d(TAG, String.valueOf(stop_proxi_time_end));
 					    							Log.d(TAG,String.valueOf(ReadProxi));
+					    							Log.d(TAG,"cannot stop");
 				    								break;
 				    							}
 				    							cur_proxi_time = System.currentTimeMillis();
-//				    							Log.d("cur proxi time in thread", String.valueOf(cur_proxi_time));
-//				    							Log.d("stop_proxi_time in thread", String.valueOf(stop_proxi_time));
+//				    							Log.d(TAG, String.valueOf(cur_proxi_time)+"STOP");
+//				    							Log.d(TAG, String.valueOf(stop_proxi_time)+"STOP");
 				    						
 				    						}
 
 				    						RecordFlag = 1;
+				    						Log.d(TAG, "thread while break");
 				    						Log.d(TAG,String.valueOf(RecordFlag));
 				    						if (register_light==0)
 				    						{
@@ -1007,6 +1116,10 @@ public class MyCallReceiver extends BroadcastReceiver {
 				    							registerLightSensor();
 
 				    						}
+				    						
+				    						Log.d(TAG, "interrupte thread");
+				    						Thread.currentThread().interrupt();
+				    						return;
 				    			
 
 			    					    }
@@ -1051,9 +1164,12 @@ public class MyCallReceiver extends BroadcastReceiver {
 					    							Log.d(TAG, String.valueOf(cur_proxi_time));
 					    							Log.d(TAG, String.valueOf(stop_proxi_time));
 					    							Log.d(TAG,String.valueOf(ReadProxi));
+					    							Log.d(TAG,"cannot stop");
 				    								break;
 				    							}
 				    							cur_proxi_time = System.currentTimeMillis();
+//				    							Log.d(TAG, String.valueOf(cur_proxi_time)+"STOP");
+//				    							Log.d(TAG, String.valueOf(stop_proxi_time)+"STOP");
 //				    							Log.d("cur proxi time in thread", String.valueOf(cur_proxi_time));
 //				    							Log.d("stop_proxi_time in thread", String.valueOf(stop_proxi_time));
 				    						
@@ -1068,6 +1184,10 @@ public class MyCallReceiver extends BroadcastReceiver {
 				    							registerLightSensor();
 
 				    						}
+				    						
+				    						Log.d(TAG, "interrupte thread");
+				    						Thread.currentThread().interrupt();
+				    						return;
 				    			
 
 			    					    }
@@ -1147,7 +1267,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	}
 	
 
-	public void sendFinalJSON(int Type,String info, int useAudio) {
+	public void sendFinalJSON(int Type,String info) {
 		try {
 			Log.d("start to send inent", "start to send inent");
 			if (Type == 1)
@@ -1212,14 +1332,23 @@ public class MyCallReceiver extends BroadcastReceiver {
 				it.putExtra("callEnd", tmp_intent_mes);
 				it.setClass(context, MyService.class);
 				context.startService(it);
-				Log.d(TAG, "end intent");
+				Log.d(TAG, "send intent");
       			Log.d(TAG, tmp_intent_mes);
       			callEnd = null;
       			callEnd = new JSONObject();
     			raw_counter = 0;
+    		    lightValue.clear();
+    		    RValue.clear();
+    		    GValue.clear();
+    		    BValue.clear();
+    		    WValue.clear();
+    		    TValue.clear();
+    		    WifiValue.clear();
 				
             	
         	}
+        	send_final_json = 1;
+        	Log.d(TAG, String.valueOf(send_final_json) + "			sent final json");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
