@@ -43,6 +43,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	public native void jniSvmScale(String cmd);
 	public native void processAudio(String cmd);
 	
+	
+	private static final String TAG = "MyCallReceiverService";
+	
 	File root = null;
 	File dir = null;
 	JSONObject Ground_truth = null;
@@ -120,7 +123,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	int StartTransmit = 0;
 	String location_global ="";
 	JSONObject Location_info = null;
-	String TAG = "service";
+
 	public Thread LocationThread = null;
 	public int LocationThreadstart = 0;
 	
@@ -145,7 +148,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    root = android.os.Environment.getExternalStorageDirectory();
 		dir = new File (root.getAbsolutePath() + "/CallDetection");
 		if (dir == null){
-			Log.d("fail to create dir", dir.toString());
+			Log.d(TAG, dir.toString());
 			
 		}
 		dir.mkdirs();
@@ -238,15 +241,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				tmp_call = new JSONObject(b.getString("callStart"));
 				Ground_truth.put("callStart", tmp_call);
 				callType = tmp_call.getInt("callType");	
-				Log.d("received", tmp_call.toString());
-				Log.d("call Type", String.valueOf(callType));
+				Log.d(TAG, tmp_call.toString());
+				Log.d(TAG, String.valueOf(callType));
 			} catch (JSONException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 			}
 			processInfo();	
 			getLocation(callType);
-			Log.d("groudth_callstart", Ground_truth.toString());
+			Log.d(TAG, Ground_truth.toString());
 
 			writeToFile(Ground_truth.toString(),tmpCallStartFile_str);
 			
@@ -260,14 +263,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			try {
 				tmp_call = new JSONObject(b.getString("callEnd"));
 				callType = tmp_call.getInt("callType");	
-				Log.d("received", tmp_call.toString());
-				Log.d("call Type", String.valueOf(callType));
+				Log.d(TAG, tmp_call.toString());
+				Log.d(TAG, String.valueOf(callType));
 			} catch (JSONException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 			}
 			if (Ground_truth !=null){
-				Log.d("groundth", Ground_truth.toString());
+				Log.d(TAG, Ground_truth.toString());
 			}
 			else
 			{
@@ -311,14 +314,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				Log.d("groundth", Ground_truth.toString());
+				Log.d(TAG, Ground_truth.toString());
 			}
 			
 //	    	Log.d("Process audio", "Process audio");
 //	    	ProcessAudio();
 			processInfo();	
 			//getLocation(callType);
-			Log.d("groundth", Ground_truth.toString());
+			Log.d(TAG, Ground_truth.toString());
 			
 
 			
@@ -327,7 +330,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 			i1.putExtra("ground_truth", Ground_truth.toString());
 			context.startActivity(i1);
-			Log.d("intent in service", i1.toString());
+			Log.d(TAG, i1.toString());
 			Ground_truth = null;
 		
 			
@@ -352,11 +355,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
     	if (audio_in_use == 0)
     	{
-    		Log.d("process light", "process light");
+    		Log.d(TAG, "process light");
     		ProcessLight();
     	}
     	if (audio_in_use == 1)
-    	{	Log.d("process audio", "process audio");
+    	{	Log.d(TAG, "process audio");
     		ProcessAudio();
     	}    	
     }
@@ -366,9 +369,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	String AveValue;
 		try {
 			AveValue = tmp_call.getString("AveValue");
-			Log.d("Avevalue", AveValue);
+			Log.d(TAG, AveValue);
 			RGBAvailable = tmp_call.getInt("RGBAvailable");
-			Log.d("RGBAvailable", String.valueOf(RGBAvailable));
+			Log.d(TAG, String.valueOf(RGBAvailable));
 	    	String[] splitStr_AveValue = AveValue.split("\\s+");
 	    	Light_Sum = Double.parseDouble(splitStr_AveValue[0]);
 	    	R_Sum = Double.parseDouble(splitStr_AveValue[1]);
@@ -413,7 +416,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    	else{
 	    		result_str = NightPredict(Light_Sum,Wifi_Sum);
 	    	}
-	    	Log.d("result string", result_str);
+	    	Log.d(TAG, result_str);
 	    	addResults(result_str,callType,calculate_mode);
 	    	WriteResult(result_str);
 	    	
@@ -459,14 +462,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	
 		try {
 			processAudio(Cmd_get_feature);
-			Log.d("get feature of files", "get feature of files");
+			Log.d(TAG, "get feature of files");
 		} catch (Exception e1)
 		{
 			e1.printStackTrace();
 		}
 		jniSvmScale(Cmd_svm_scale);
 		jniSvmPredict(Cmd_svm_predict);
-		Log.d("Audio test", "finish testing");
+		Log.d(TAG, "finish testing");
 		
 		File AudioResultFile = new File(Str_result);
 		BufferedReader bufferedReader_svm = null;
@@ -514,7 +517,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
 			}
 			Str_return_result = String.valueOf(Tmp_result) + " " + String.valueOf(Tmp_con);
-			Log.d("Audio test", Str_return_result);
+			Log.d(TAG, Str_return_result);
 		} else {
 			Str_return_result = "0" +" "+ "0.0";
 		}
@@ -626,7 +629,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			
 		}
 		Str_Result = String.valueOf(Tmp_result) +" "+String.valueOf(Tmp_con);
-		Log.d("get light results", Str_Result);
+		Log.d(TAG, Str_Result);
 		calculate_mode = 1;
 		return Str_Result;  	   	
     }
@@ -862,7 +865,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		if (LocationFlag == 0){
 			location_global = Double.toString(location.getLatitude()) + " "+Double.toString(location.getLongitude());	
 			LocationFlag = 1;	
-			Log.d("locationChanged", location_global);
+			Log.d(TAG, location_global);
 		}
 
 	}
@@ -875,19 +878,19 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d("stop LocationThread", "stop LocationThread");
+				Log.d(TAG, "stop LocationThread");
 				
 			}
 		}
 	    start_location_time = System.currentTimeMillis();
 	    stop_location_time = start_location_time + 3000;
-	    Log.d("start_location_time start", String.valueOf(start_location_time));
-		Log.d("stop_location_time start", String.valueOf(stop_location_time));
+	    Log.d(TAG, String.valueOf(start_location_time));
+		Log.d(TAG, String.valueOf(stop_location_time));
     	
     	if (LocationThreadstart ==0)
 		{
     		LocationThreadstart = 1;
-			Log.d("start Locationthread","start Location thread");
+			Log.d(TAG,"start Location thread");
 			LocationThread = new Thread() {
 
 				public void run() {
@@ -898,15 +901,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							
 							if (start_location_time > stop_location_time)
 							{
-    							Log.d("start_location_time", String.valueOf(start_location_time));
-    							Log.d("stop_location_time", String.valueOf(stop_location_time));
+    							Log.d(TAG, String.valueOf(start_location_time));
+    							Log.d(TAG, String.valueOf(stop_location_time));
     							location_tmp = "fail";
     							break;
 							}
 							
 							if ((mLastLocation != null) || (location_global.length() > 2)) {
-								Log.d("mLastLocation", mLastLocation.toString());
-								Log.d("location_global", location_global);
+								Log.d(TAG, mLastLocation.toString());
+								Log.d(TAG, location_global);
 								if (mLastLocation != null) {
 									location_tmp = Double.toString(mLastLocation.getLatitude()) + " "
 											+ Double.toString(mLastLocation.getLongitude());
@@ -936,7 +939,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d("stop LocationThread", "stop LocationThread in writing location");
+				Log.d(TAG, "stop LocationThread in writing location");
 				
 			}
 		}
@@ -947,7 +950,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			e.printStackTrace();
 		}
 		writeToFile(tmp_object.toString(),CallStartLocationFile_Str);
-		Log.d("write first location", tmp_object.toString());
+		Log.d(TAG, tmp_object.toString());
     }
     
     private void writeToFile(String data, String file) {
@@ -955,10 +958,10 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
             OutputStreamWriter outputStreamWriter = new OutputStreamWriter(openFileOutput(file, Context.MODE_PRIVATE));
             outputStreamWriter.write(data);
             outputStreamWriter.close();
-            Log.d("write file", "write file successfully");
+            Log.d(TAG, "write file successfully");
         }
         catch (IOException e) {
-            Log.e("Exception", "File write failed: " + e.toString());
+            Log.e(TAG, "File write failed: " + e.toString());
         } 
     }
 
@@ -985,9 +988,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
             }
         }
         catch (FileNotFoundException e) {
-            Log.e("login activity", "File not found: " + e.toString());
+            Log.e(TAG, "File not found: " + e.toString());
         } catch (IOException e) {
-            Log.e("login activity", "Can not read file: " + e.toString());
+            Log.e(TAG, "Can not read file: " + e.toString());
         }
 
         return ret;

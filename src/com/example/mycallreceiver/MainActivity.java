@@ -57,6 +57,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+
 public class MainActivity extends Activity implements
 ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	
@@ -69,7 +70,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 //	public native void jniSvmScale(String cmd);
 //	public native void processAudio(String cmd);
 	
-	private static final String TAG = "MainActivity";
+	private static final String TAG = "MyCallReceiverMainActivity";
 	int Start_truth = -10;
 	int End_truth = -10;
     NotificationManager manager;
@@ -140,7 +141,6 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     public long start_location_time = 0;
     public long stop_location_time = 0;
 	
-	
 
 
 	@Override
@@ -158,6 +158,8 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		dir.mkdirs();
 		Groundtruthfile_str = dir+"/GroundTruthFile.txt";
 		
+
+		
     	// Create an instance of GoogleAPIClient.
     	if (mGoogleApiClient == null) {
     	    mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -168,7 +170,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	}
     	mGoogleApiClient.connect();
 
-		final int[] mFiles = new int[] { R.raw.light_model6, R.raw.light_range_set6, R.raw.audio_model2, R.raw.audio_range2, R.raw.chirp14_file };
+		final int[] mFiles = new int[] { R.raw.light_model6, R.raw.light_range_set6, R.raw.audio_model4, R.raw.audio_range4, R.raw.chirp14_file };
 		final CharSequence[] filenames = { "model_light", "range_light", "model_audio", "range_audio", "chirp_file" };
 		for (int i = 0; i < mFiles.length; i++) {
 			try {
@@ -181,7 +183,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			}
 		}
 		Intent service_intent = getIntent();
-		Log.d("service intent in on create", service_intent.toString());
+		Log.d(TAG, service_intent.toString());
 
 	
 	
@@ -192,21 +194,21 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	public void onResume() {
 		super.onResume();
 		Intent service_intent = getIntent();
-		Log.d("service intent in onresume", service_intent.toString());
+		Log.d(TAG, service_intent.toString());
 		Bundle b = service_intent.getExtras();
 		if (b!=null){
 			
 			String tmp_groundth =(String) b.get("ground_truth"); 
 			if (tmp_groundth!=null)
 			{
-				Log.d("received ground truth in resume", tmp_groundth);
+				Log.d(TAG, tmp_groundth);
 				try {
 					Ground_truth = new JSONObject(tmp_groundth);
 				} catch (JSONException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				Log.d("get ground truth from service intent", Ground_truth.toString());
+				Log.d(TAG, Ground_truth.toString());
 				
 				mGoogleApiClient.connect();
 				LocationFlag = 0;
@@ -237,9 +239,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							End_truth = -10;
 						}
 						try {
-							Log.d("add end ", Ground_truth.toString());
+							Log.d(TAG, Ground_truth.toString());
 							Ground_truth.put("End_ground_truth", End_truth);
-							Log.d("add end finish", Ground_truth.toString());
+							Log.d(TAG, Ground_truth.toString());
 						} catch (JSONException e1) {
 							// TODO Auto-generated catch block
 							e1.printStackTrace();
@@ -270,9 +272,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							Start_truth = -10;
 						}
 						try {
-							Log.d("add start", Ground_truth.toString());
+							Log.d(TAG, Ground_truth.toString());
 							Ground_truth.put("Start_ground_truth", Start_truth);
-							Log.d("add start finish", Ground_truth.toString());
+							Log.d(TAG, Ground_truth.toString());
 						} catch (JSONException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -331,17 +333,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	public void onStart() {
 	    super.onStart();
 	    Log.d("status", "onstart");
-		Intent service_intent = getIntent();
-		Log.d("service intent in onstart", service_intent.toString());	
+	
 	}
 	
 	@Override
 	public void onRestart() {
 	    super.onRestart();
 	    Log.d("status", "onRestart");
-		Intent service_intent = getIntent();
-		Log.d("service intent in onRestart", service_intent.toString());
-	    //registerReceiver(broadcastReceiver, new IntentFilter("broadCastName"));
+
 	}
 	
 	@Override
@@ -468,14 +467,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		};
 
 		t.start();	
-		Log.d("send start", Ground_truth.toString());
+		Log.d(TAG, Ground_truth.toString());
 		if (waitForSending!= null)
 		{
 			if (!waitForSending.isInterrupted());
 			{
 				waitForSending.interrupt();
 				waitForSending = null;
-				Log.d("stop waitForSending", "stop waitForSending in SendInformation");
+				Log.d(TAG, "stop waitForSending in SendInformation");
 				
 			}
 		}
@@ -508,7 +507,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					if (Ground_truth != null) {
 						if ((Ground_truth.has("Start_ground_truth") && Ground_truth.has("Location2")) && Ground_truth.has("End_ground_truth")) {
 							SendInformation();
-							Log.d("satify requirements", "triger the SendInformation ");
+							Log.d(TAG, "triger the SendInformation ");
 							break;
 						}
 					} else {
@@ -607,7 +606,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		if (LocationFlag == 0){
 			location_global = Double.toString(location.getLatitude()) + " "+Double.toString(location.getLongitude());	
 			LocationFlag = 1;	
-			Log.d("locationChanged", location_global);
+			Log.d(TAG, location_global);
 		}
 
 	}
@@ -619,18 +618,18 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d("stop LocationThread", "stop LocationThread");
+				Log.d(TAG, "stop LocationThread");
 
 			}
 		}
 		start_location_time = System.currentTimeMillis();
 		stop_location_time = start_location_time + 3000;
-	    Log.d("start_location_time start", String.valueOf(start_location_time));
-		Log.d("stop_location_time start", String.valueOf(stop_location_time));
+	    Log.d(TAG, String.valueOf(start_location_time));
+		Log.d(TAG, String.valueOf(stop_location_time));
 
 		if (LocationThreadstart == 0) {
 			LocationThreadstart = 1;
-			Log.d("start Locationthread", "start Location thread");
+			Log.d(TAG, "start Location thread");
 			LocationThread = new Thread() {
 
 				public void run() {
@@ -639,15 +638,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 						while (true) {
 
 							if (start_location_time > stop_location_time) {
-								Log.d("start_location_time", String.valueOf(start_location_time));
-								Log.d("stop_location_time", String.valueOf(stop_location_time));
+								Log.d(TAG, String.valueOf(start_location_time));
+								Log.d(TAG, String.valueOf(stop_location_time));
 								location2 = "fail";
 								break;
 							}
 
 							if ((mLastLocation != null) || (location_global.length() > 2)) {
-								Log.d("mLastLocation", mLastLocation.toString());
-								Log.d("location_global", location_global);
+								Log.d(TAG, mLastLocation.toString());
+								Log.d(TAG, location_global);
 								if (mLastLocation != null) {
 									location2 = Double.toString(mLastLocation.getLatitude()) + " "
 											+ Double.toString(mLastLocation.getLongitude());
@@ -671,14 +670,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
 	private void putLocation() {
 		
-		Log.d("put location 2", location2);
+		Log.d(TAG, location2);
 
 		if (LocationThread != null) {
 			if (!LocationThread.isInterrupted())
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d("stop LocationThread", "stop LocationThread in writing location");
+				Log.d(TAG, "stop LocationThread in writing location");
 
 			}
 		}
