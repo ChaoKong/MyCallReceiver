@@ -47,6 +47,7 @@ import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -71,6 +72,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 //	public native void processAudio(String cmd);
 	
 	private static final String TAG = "MyCallReceiverMainActivity";
+	public Logger logger = new Logger(true,TAG);
 	int Start_truth = -10;
 	int End_truth = -10;
     NotificationManager manager;
@@ -140,6 +142,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	public int LocationThreadstart = 0;
     public long start_location_time = 0;
     public long stop_location_time = 0;
+    public Intent service_intent = null;
+    
+
 	
 
 
@@ -149,6 +154,24 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
 		
 		setContentView(R.layout.activity_main);
+		
+		try {
+		    final File path = new File(
+		    		android.os.Environment.getExternalStorageDirectory(), "/CallDetection");
+		    if (!path.exists()) {
+		    }
+		    
+		    String Command = "logcat -c -b main -b radio -b events\n";
+            Runtime.getRuntime().exec(Command);        
+            Log.d(TAG,Command);
+            
+		    Runtime.getRuntime().exec(
+		            "logcat   -v threadtime -b main -f " + path + File.separator
+		                    + "IOdetection_logcat"
+		                    + ".txt");
+		} catch (IOException e) {
+		    e.printStackTrace();
+		}
 		textCallStart_reading = (TextView) findViewById(R.id.CallStart_reading);
 		textCallEnd_reading = (TextView) findViewById(R.id.CallEnd_reading);
 		textLocationStart_reading = (TextView) findViewById(R.id.LocationStart_reading);
@@ -182,8 +205,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				e.printStackTrace();
 			}
 		}
-		Intent service_intent = getIntent();
-		Log.d(TAG, service_intent.toString());
+
+		logger.d("test for logger");
+
 
 	
 	
@@ -191,9 +215,19 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	
 	
 	@Override
+    public void onNewIntent (Intent intent)
+    {
+		super.onNewIntent(intent);
+	    setIntent(intent);
+	    Log.d(TAG, "new intent");
+    }
+	
+	
+	@Override
 	public void onResume() {
 		super.onResume();
-		Intent service_intent = getIntent();
+		service_intent = getIntent();
+		Log.d(TAG, "onResume");
 		Log.d(TAG, service_intent.toString());
 		Bundle b = service_intent.getExtras();
 		if (b!=null){
@@ -201,7 +235,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			String tmp_groundth =(String) b.get("ground_truth"); 
 			if (tmp_groundth!=null)
 			{
-				Log.d(TAG, tmp_groundth);
+				logger.d(tmp_groundth);
 				try {
 					Ground_truth = new JSONObject(tmp_groundth);
 				} catch (JSONException e) {
@@ -215,6 +249,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				
 				LocationThread = null;
 				getLocation();
+				
+				
+//				getIntent().replaceExtras(new Bundle());
+//				getIntent().setAction("");
+//				getIntent().setData(null);
+//				getIntent().setFlags(0); 
+//				Log.d(TAG,"clear intet");
+//				Intent tmp_intent = getIntent();
+//				Log.d(TAG, tmp_intent.toString());
 				
 				final CharSequence[] items = { "Indoor", "Outdoor", "Unknown" };
 
@@ -239,7 +282,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							End_truth = -10;
 						}
 						try {
-							Log.d(TAG, Ground_truth.toString());
+							logger.d(Ground_truth.toString());
 							Ground_truth.put("End_ground_truth", End_truth);
 							Log.d(TAG, Ground_truth.toString());
 						} catch (JSONException e1) {
@@ -248,7 +291,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 						}
 
 						waitSending();
-						Log.d(TAG, Integer.toString(End_truth));
+						logger.d(Integer.toString(End_truth));
 					}
 				});
 				AlertDialog alert = builder.create();
@@ -272,15 +315,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 							Start_truth = -10;
 						}
 						try {
-							Log.d(TAG, Ground_truth.toString());
+							logger.d(Ground_truth.toString());
 							Ground_truth.put("Start_ground_truth", Start_truth);
-							Log.d(TAG, Ground_truth.toString());
+							logger.d(Ground_truth.toString());
 						} catch (JSONException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 						// Do something with the selection
-						Log.d(TAG, Integer.toString(Start_truth));
+						logger.d(Integer.toString(Start_truth));
 					}
 				});
 				AlertDialog alert2 = builder2.create();
@@ -326,7 +369,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	public void onPause() {
 	    super.onPause();
 	    Log.d("status", "onPause");
-	    //unregisterReceiver(broadcastReceiver);
+	   
 	}
 	
 	@Override
@@ -348,7 +391,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    super.onStop();
 	    Log.d("status", "onStop");
 	    this.finish();
-	    //registerReceiver(broadcastReceiver, new IntentFilter("broadCastName"));
+	  
 	}
 	
 		
@@ -387,14 +430,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				result1_Str = "Result: " + "indoor   " + "     confidence:  " + splitStr_result1[1];
 			}
 			else if (result1 == 1) {
-				if ((result1_con < 0.9) && (calculate_mode==1))
-				{
-					result1_Str = "Result: " + "Unknown   ";
-					
-				}
-				else{
+				
 				result1_Str = "Result:	" + "outdoor   " + "     confidence:  " + splitStr_result1[1];
-				}
+				
 			}
 			else{
 				result1_Str = "Result: " + "Unknown   ";
@@ -455,7 +493,8 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 																			// entity
 						String s = getStringFromInputStream(in);
 						
-						Log.d("Jack-Response", s);
+						Log.d(TAG, "Jack-Response   " +s);
+
 					}
 					Ground_truth = null;
 					Ground_truth = new JSONObject();
@@ -467,14 +506,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		};
 
 		t.start();	
-		Log.d(TAG, Ground_truth.toString());
+		logger.d(Ground_truth.toString());
 		if (waitForSending!= null)
 		{
 			if (!waitForSending.isInterrupted());
 			{
 				waitForSending.interrupt();
 				waitForSending = null;
-				Log.d(TAG, "stop waitForSending in SendInformation");
+				logger.d("stop waitForSending in SendInformation");
 				
 			}
 		}
@@ -507,7 +546,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					if (Ground_truth != null) {
 						if ((Ground_truth.has("Start_ground_truth") && Ground_truth.has("Location2")) && Ground_truth.has("End_ground_truth")) {
 							SendInformation();
-							Log.d(TAG, "triger the SendInformation ");
+							logger.d("triger the SendInformation ");
 							break;
 						}
 					} else {
@@ -588,7 +627,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		// Refer to the javadoc for ConnectionResult to see what error codes
 		// might be returned in
 		// onConnectionFailed.
-		Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + result.getErrorCode());
+		//Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + result.getErrorCode());
 	}
 
 	@Override
@@ -596,7 +635,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		// The connection to Google Play services was lost for some reason. We
 		// call connect() to
 		// attempt to re-establish the connection.
-		Log.i(TAG, "Connection suspended");
+		//Log.i(TAG, "Connection suspended");
 		mGoogleApiClient.connect();
 	}
 
@@ -606,7 +645,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		if (LocationFlag == 0){
 			location_global = Double.toString(location.getLatitude()) + " "+Double.toString(location.getLongitude());	
 			LocationFlag = 1;	
-			Log.d(TAG, location_global);
+			logger.d(location_global);
 		}
 
 	}
@@ -624,12 +663,12 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		}
 		start_location_time = System.currentTimeMillis();
 		stop_location_time = start_location_time + 3000;
-	    Log.d(TAG, String.valueOf(start_location_time));
-		Log.d(TAG, String.valueOf(stop_location_time));
+	    logger.d(String.valueOf(start_location_time));
+		logger.d(String.valueOf(stop_location_time));
 
 		if (LocationThreadstart == 0) {
 			LocationThreadstart = 1;
-			Log.d(TAG, "start Location thread");
+			logger.d("start Location thread");
 			LocationThread = new Thread() {
 
 				public void run() {
@@ -638,15 +677,15 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 						while (true) {
 
 							if (start_location_time > stop_location_time) {
-								Log.d(TAG, String.valueOf(start_location_time));
-								Log.d(TAG, String.valueOf(stop_location_time));
+								logger.d(String.valueOf(start_location_time));
+								logger.d(String.valueOf(stop_location_time));
 								location2 = "fail";
 								break;
 							}
 
 							if ((mLastLocation != null) || (location_global.length() > 2)) {
-								Log.d(TAG, mLastLocation.toString());
-								Log.d(TAG, location_global);
+								logger.d(mLastLocation.toString());
+								logger.d(location_global);
 								if (mLastLocation != null) {
 									location2 = Double.toString(mLastLocation.getLatitude()) + " "
 											+ Double.toString(mLastLocation.getLongitude());
@@ -661,7 +700,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 						}
 						putLocation();
 						
-						Log.d(TAG, "interrupte location thread");
+						logger.d("interrupte location thread");
 						Thread.currentThread().interrupt();
 						return;
 					}
@@ -674,14 +713,14 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
 	private void putLocation() {
 		
-		Log.d(TAG, location2);
+		logger.d(location2);
 
 		if (LocationThread != null) {
 			if (!LocationThread.isInterrupted())
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d(TAG, "stop LocationThread in writing location");
+				logger.d("stop LocationThread in writing location");
 
 			}
 		}

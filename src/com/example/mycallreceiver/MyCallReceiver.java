@@ -66,6 +66,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 //	public native void jniSvmScale(String cmd);
 //	public native void processAudio(String cmd);
 	private static final String TAG = "MyCallReceiverBroadcastReceiver";
+	public Logger logger = new Logger(true,TAG);
 	
 	public static JSONObject callStart = null;
 	public static JSONObject callEnd = null;
@@ -221,7 +222,7 @@ public class MyCallReceiver extends BroadcastReceiver {
         switch (event) {
         case "RINGING":
         	
-            Log.d(TAG, "State : Ringing, incoming_number : " + incoming_number);
+            logger.d( "State : Ringing, incoming_number : " + incoming_number);
 
             
             if((previus_state.equals("IDLE")) || (previus_state.equals("FIRST_CALL_RINGING"))){
@@ -231,11 +232,11 @@ public class MyCallReceiver extends BroadcastReceiver {
                 current_state = "SECOND_CALL_RINGING";
             }
 			cur_time = System.currentTimeMillis();
-			Log.d(TAG, String.valueOf(cur_time));
-			Log.d(TAG, String.valueOf(cur_time));
+			logger.d( String.valueOf(cur_time));
+			logger.d( String.valueOf(cur_time));
             break;
         case "OFFHOOK":
-            Log.d(TAG, "State : offhook, incoming_number : " + incoming_number);
+            logger.d( "State : offhook, incoming_number : " + incoming_number);
             if((previus_state.equals("IDLE")) ||(previus_state.equals("FIRST_CALL_RINGING")) || previus_state.equals("OFFHOOK")){
                 current_state = "OFFHOOK";
             }
@@ -243,11 +244,11 @@ public class MyCallReceiver extends BroadcastReceiver {
                 current_state ="OFFHOOK";
             }
 			cur_time = System.currentTimeMillis();
-			Log.d(TAG, String.valueOf(cur_time));
+			logger.d( String.valueOf(cur_time));
             
             break;
         case "IDLE":
-            Log.d(TAG, "State : idle and  incoming_number : " + incoming_number);
+            logger.d( "State : idle and  incoming_number : " + incoming_number);
             if((previus_state.equals("OFFHOOK")) || (previus_state.equals("SECOND_CALL_RINGING")) || (previus_state.equals("IDLE"))){
                 current_state="IDLE"; 
             }    
@@ -255,14 +256,14 @@ public class MyCallReceiver extends BroadcastReceiver {
                 current_state = "IDLE";
             }
 			cur_time = System.currentTimeMillis();
-			Log.d(TAG, String.valueOf(cur_time));
+			logger.d( String.valueOf(cur_time));
             updateIncomingNumber("no_number",context);
-            Log.d(TAG,"stored incoming number flushed");
+            logger.d("stored incoming number flushed");
             break;
         }
         
         if(!current_state.equals(previus_state)){
-        	Log.d(TAG, "Updating  state from "+previus_state +" to "+current_state);
+        	logger.d( "Updating  state from "+previus_state +" to "+current_state);
         	//Toast.makeText(context, "Updating  state from "+previus_state +" to "+current_state, Toast.LENGTH_LONG).show();
         	updateCallState(current_state,context);
         	if(((previus_state.equals("OFFHOOK")) && (current_state.equals("IDLE")))){
@@ -271,10 +272,10 @@ public class MyCallReceiver extends BroadcastReceiver {
 				callEnd = new JSONObject();
 				EndingCallFlag = 1;
 				registerProxiSensor();
-				Log.d(TAG, "call end");
+				logger.d( "call end");
 				cur_time = System.currentTimeMillis();
-				Log.d(TAG, String.valueOf(cur_time));
-				Log.d(TAG, String.valueOf(EndingCallFlag));
+				logger.d( String.valueOf(cur_time));
+				logger.d( String.valueOf(EndingCallFlag));
 				CallType = 2;
 				
 
@@ -289,10 +290,10 @@ public class MyCallReceiver extends BroadcastReceiver {
         		EndingCallFlag = 3;
         		registerLightSensor2();
 				cur_time = System.currentTimeMillis();
-				Log.d(TAG, String.valueOf(cur_time));
-				Log.d(TAG, String.valueOf(EndingCallFlag));
+				logger.d( String.valueOf(cur_time));
+				logger.d( String.valueOf(EndingCallFlag));
         		CallType = 1;
-        		Log.d(TAG, "outgoing call");
+        		logger.d( "outgoing call");
 
         	}
         	
@@ -319,10 +320,10 @@ public class MyCallReceiver extends BroadcastReceiver {
         		EndingCallFlag = 2;
         		registerProxiSensor();
 				cur_time = System.currentTimeMillis();
-				Log.d(TAG, String.valueOf(cur_time));
-				Log.d(TAG, String.valueOf(EndingCallFlag));
+				logger.d( String.valueOf(cur_time));
+				logger.d( String.valueOf(EndingCallFlag));
         		CallType = 1;
-        		Log.d(TAG, "incoming call");
+        		logger.d( "incoming call");
         		
         	}	
         }   	   	
@@ -335,7 +336,7 @@ public class MyCallReceiver extends BroadcastReceiver {
         spEditor = sp.edit();
         spEditor.putString("call_state", state);
         spEditor.commit();
-        Log.d(TAG, "state updated");
+        logger.d( "state updated");
 
     }
     public void updateIncomingNumber(String inc_num,Context context){
@@ -343,18 +344,18 @@ public class MyCallReceiver extends BroadcastReceiver {
         spEditor = sp.edit();
         spEditor.putString("inc_num", inc_num);
         spEditor.commit();
-        Log.d(TAG, "incoming number updated");
+        logger.d( "incoming number updated");
     }
     public String getCallState(Context context){
         sp1 = PreferenceManager.getDefaultSharedPreferences(context);
         String st =sp1.getString("call_state", "IDLE");
-        Log.d(TAG,"get previous state as :"+st);
+        logger.d("get previous state as :"+st);
         return st;
     }
     public String getIncomingNumber(Context context){
         sp1 = PreferenceManager.getDefaultSharedPreferences(context);
         String st =sp1.getString("inc_num", "no_num");
-        Log.i(TAG,"get incoming number as :"+st);
+        //Log.i(TAG,"get incoming number as :"+st);
         return st;
     } 
     
@@ -378,7 +379,16 @@ public class MyCallReceiver extends BroadcastReceiver {
 		if (InputRGBFile.exists())
 		{
 			RGBAvailabe = 1;
-			Log.d(TAG, "RGB available");
+			try {
+				bufferedReader = new BufferedReader(new FileReader(InputRGBFile));
+			} catch (FileNotFoundException e2) {
+				// TODO Auto-generated catch block
+				RGBAvailabe = 0;
+				Log.d("try to read RGB, unavailable", "try to read RGB, unavailable");
+				e2.printStackTrace();
+				
+			}
+			logger.d( "RGB available");
 			
 		}
 		
@@ -463,7 +473,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     	callEnd = null;
     	
        	String deviceModel = Build.MODEL;
-       	Log.d(TAG,deviceModel);
+       	logger.d(deviceModel);
     	String S6 = "g920t";
     	String G4 = "lg";
     	if (deviceModel.toLowerCase().contains(S6.toLowerCase())){
@@ -493,7 +503,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    TValue = new ArrayList<Integer>();
 	    WifiValue = new ArrayList<Integer>();	
 	    long curTime = System.currentTimeMillis();
-	    Log.d(TAG, "create array "+String.valueOf(curTime));
+	    logger.d( "create array "+String.valueOf(curTime));
     	
 		if(LightSensor != null){
 			
@@ -518,7 +528,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			{
 				proxiThread.interrupt();
 				proxiThread = null;
-				Log.d(TAG, "stop proxi thread in register light");
+				logger.d( "stop proxi thread in register light");
 				
 			}
 		}
@@ -685,7 +695,7 @@ public class MyCallReceiver extends BroadcastReceiver {
             if (num == BufferElements2Rec){
 	            long curTime = System.currentTimeMillis();
 	            String curTimeStr = ""+curTime+";   ";
-	            Log.i(TAG,curTimeStr);
+	            //Log.i(TAG,curTimeStr);
 	            try {
 	            	outwriterSound.append(curTimeStr);
 	    		} catch (IOException e1) {
@@ -693,7 +703,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    			e1.printStackTrace();
 	    		}
 	        	String strI = ""+(sData.length);
-	        	Log.i(TAG, strI);
+	        	//Log.i(TAG, strI);
 	        	
 	        	for ( int i=0; i<sData.length;i++){
 	        		try {
@@ -760,12 +770,12 @@ public class MyCallReceiver extends BroadcastReceiver {
     			int Wifi_RSSI=0;
     			long timeSta = System.currentTimeMillis();
     			String curTimeStr = ""+timeSta+";   ";
-    			Log.d(TAG, curTimeStr);
+    			logger.d( curTimeStr);
     			
                 if (EndingCallFlag != 3){
                 	
                 	unregisterProxiSensor();
-                	Log.d(TAG, "unregister proximity"+String.valueOf(EndingCallFlag));
+                	logger.d( "unregister proximity"+String.valueOf(EndingCallFlag));
                 }
     			
     			if (lightValue.size()==0)
@@ -778,9 +788,9 @@ public class MyCallReceiver extends BroadcastReceiver {
     			if ((light_thread_start ==0) && (isG4==1))
     			{
     				light_thread_start = 1;
-    				Log.d(TAG,"first start light");
-					Log.d(TAG, String.valueOf(start_light_time) + "  start light time in light thread");
-					Log.d(TAG, String.valueOf(stop_light_time)+ " stop light timein light thread");
+    				logger.d("first start light");
+					logger.d( String.valueOf(start_light_time) + "  start light time in light thread");
+					logger.d( String.valueOf(stop_light_time)+ " stop light timein light thread");
     				lightWaitThread = new Thread() {
 
     					public void run() {
@@ -790,8 +800,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    						{
 	    							if ((cur_light_time > stop_light_time) || (send_final_json==1))
 	    							{
-		    							Log.d(TAG, String.valueOf(cur_light_time) + " in light thread");
-		    							Log.d(TAG, String.valueOf(stop_light_time)+ " in light thread");
+		    							logger.d( String.valueOf(cur_light_time) + " in light thread");
+		    							logger.d( String.valueOf(stop_light_time)+ " in light thread");
 
 	    								break;
 	    							}
@@ -801,18 +811,15 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    						if (send_final_json !=1)
 	    						{
 	    							unregisterLightSensor();
-	    							Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag) +"   in light thread");
-	    							Log.d(TAG, "light size		"+String.valueOf(lightValue.size()));
-	    							for (int i = 0; i<lightValue.size(); i++ )
-	    							{
-	    								Log.d(TAG,"light value in lightvalue: "+String.valueOf(i)+"   "+String.valueOf(lightValue.get(i)));
-	    							}
+	    							logger.d( "unregister light"+String.valueOf(EndingCallFlag) +"   in light thread");
+	    							logger.d( "light size		"+String.valueOf(lightValue.size()));
+
 	    							if (lightValue.size()==0)
 	    							{	
 	    			    				String Light_RGB_Wifi = String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(0)+" "+String.valueOf(-127);
 	    			    				   
-	    			    				Log.d(TAG,"get Ave info in light thread, all 0");
-	    			    				Log.d(TAG, String.valueOf(CallType));
+	    			    				logger.d("get Ave info in light thread, all 0");
+	    			    				logger.d( String.valueOf(CallType));
 	    			             
 	    			                    sendFinalJSON(CallType,Light_RGB_Wifi);
 	    								
@@ -825,7 +832,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    			    				double W_Sum = 0;
 	    			    				double Wifi_Sum = 0;
 	    								int tmp_size = lightValue.size();
-	    								Log.d(TAG, String.valueOf(tmp_size)+"light value size");
+	    								logger.d( String.valueOf(tmp_size)+"light value size");
 	    			    				for ( int i = 0; i<tmp_size; i++){
 	    			    					Light_Sum = Light_Sum + lightValue.get(i);
 	    			    					R_Sum = R_Sum + RValue.get(i);
@@ -843,14 +850,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 	    			    				Wifi_Sum = Wifi_Sum/tmp_size;
 	    			    				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
 	    			    				   
-	    			    				Log.d(TAG,"get Ave info in light thread");
-	    			    				Log.d(TAG, String.valueOf(CallType));
+	    			    				logger.d("get Ave info in light thread");
+	    			    				logger.d( String.valueOf(CallType));
 	    			    				
 	    			    				
 	    			                    sendFinalJSON(CallType,Light_RGB_Wifi);
 	    							}
 	    						}
-	    						Log.d(TAG, "interrupte light thread");
+	    						logger.d( "interrupte light thread");
 	    						Thread.currentThread().interrupt();
 	    						return;
     					    }
@@ -868,7 +875,7 @@ public class MyCallReceiver extends BroadcastReceiver {
                     unregisterLightSensor();
                     Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag));
                     
-    				Log.d(TAG, "light value size is 5");
+    				logger.d( "light value size is 5");
     				RecordFlag =0;
     				double Light_Sum = 0;
     				double R_Sum = 0;
@@ -892,7 +899,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     				W_Sum = W_Sum/5;
     				Wifi_Sum = Wifi_Sum/5;
     				
-    				Log.d(TAG, String.valueOf(isS6));
+    				logger.d( String.valueOf(isS6));
     				
     	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && ((EndingCallFlag ==1)) && (isS6 ==1)))
     				//if (((Audio_start==0) && (EndingCallFlag ==1)) && (isS6 ==1) )
@@ -920,8 +927,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     				
     				String Light_RGB_Wifi = String.valueOf(Light_Sum)+" "+String.valueOf(R_Sum)+" "+String.valueOf(G_Sum)+" "+String.valueOf(B_Sum)+" "+String.valueOf(W_Sum)+" "+String.valueOf(Wifi_Sum);
     				   
-    				Log.d(TAG,"get Ave info");
-    				Log.d(TAG, String.valueOf(CallType));
+    				logger.d("get Ave info");
+    				logger.d( String.valueOf(CallType));
              
                     sendFinalJSON(CallType,Light_RGB_Wifi);
                    
@@ -932,7 +939,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     			
 	            
 	            lightvalue = (double) (event.values[0]);
-	            Log.d(TAG, String.valueOf(lightvalue));
+	            logger.d( String.valueOf(lightvalue));
 	            //lightValue.add(lightvalue);
 				
     			SupplicantState supState; 
@@ -942,7 +949,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     			supState = wifiInfo.getSupplicantState();
 
 	            
-	            Log.d(TAG, String.valueOf(wifiInfo.getRssi()));
+	            logger.d( String.valueOf(wifiInfo.getRssi()));
 	            Wifi_RSSI = wifiInfo.getRssi();
 	            finalString = new StringBuilder();
 	            //WifiValue.add(Wifi_RSSI);
@@ -977,7 +984,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 								GValue.add(tmp_G);
 								BValue.add(tmp_B);
 								WValue.add(tmp_W);
-								Log.d(TAG, line);
+								logger.d( line);
 							
 										
 
@@ -1007,19 +1014,15 @@ public class MyCallReceiver extends BroadcastReceiver {
 				
 	            }
 	            
-	            Log.d(TAG, String.valueOf(lightValue.size()) + "ligth size");
+	            logger.d( String.valueOf(lightValue.size()) + "ligth size");
 
 				if   (RecordFlag==1){
 					
-					for (int i = 0; i<lightValue.size(); i++ )
-					{
-						Log.d(TAG,"light value in lightvalue: "+String.valueOf(i)+"   "+String.valueOf(lightValue.get(i)));
-					}
 					String Light_RGB_Wifi = String.valueOf(lightvalue) +" "+finalString.toString()+" "+String.valueOf(Wifi_RSSI);
-					Log.d(TAG, Light_RGB_Wifi);
+					logger.d( Light_RGB_Wifi);
 					writeJSON(outwriterAllInfo,timeSta,"rawData",Light_RGB_Wifi);
 					
-					Log.d(TAG,"calladd");
+					logger.d("calladd");
 					sendJSON(CallType,timeSta,"rawData",Light_RGB_Wifi);
 					finalString = null;
 
@@ -1048,15 +1051,15 @@ public class MyCallReceiver extends BroadcastReceiver {
     			String curTimeStr = ""+proxi_time+";   ";
     			ReadProxi = event.values[0];
     			
-    			Log.d(TAG,String.valueOf(proxi_count));
-    			Log.d(TAG, String.valueOf(ReadProxi));
-    			Log.d(TAG,String.valueOf(proxi_time));
-    			Log.d(TAG,String.valueOf(cur_proxi_time));
-    			Log.d(TAG,String.valueOf(stop_proxi_time_end));
-    			Log.d(TAG,String.valueOf(stop_proxi_time));
-    			Log.d(TAG,String.valueOf(RecordFlag));
-    			Log.d(TAG, String.valueOf(EndingCallFlag));
-    			Log.d(TAG,"start to read proxi");
+//    			Log.d(TAG,String.valueOf(proxi_count));
+//    			Log.d(TAG, String.valueOf(ReadProxi));
+//    			Log.d(TAG,String.valueOf(proxi_time));
+//    			Log.d(TAG,String.valueOf(cur_proxi_time));
+//    			Log.d(TAG,String.valueOf(stop_proxi_time_end));
+//    			Log.d(TAG,String.valueOf(stop_proxi_time));
+//    			Log.d(TAG,String.valueOf(RecordFlag));
+//    			Log.d(TAG, String.valueOf(EndingCallFlag));
+//    			Log.d(TAG,"start to read proxi");
     			
     			if (ReadProxi<1)
     			{
@@ -1083,21 +1086,21 @@ public class MyCallReceiver extends BroadcastReceiver {
 			    			if (proxi_thread_start ==0)
 			    			{
 			    				proxi_thread_start = 1;
-			    				Log.d(TAG,"first start proxithread");
+			    				logger.d("first start proxithread");
 			    				proxiThread = new Thread() {
 
 			    					public void run() {
 			    						while(!Thread.interrupted())
 			    					    {
-			    							Log.d(TAG, "start to do while");
+			    							logger.d( "start to do while");
 				    						while (true )
 				    						{
 				    							if ((cur_proxi_time > stop_proxi_time_end) && (ReadProxi>1))
 				    							{
-					    							Log.d(TAG, String.valueOf(cur_proxi_time));
-					    							Log.d(TAG, String.valueOf(stop_proxi_time_end));
-					    							Log.d(TAG,String.valueOf(ReadProxi));
-					    							Log.d(TAG,"cannot stop");
+//					    							Log.d(TAG, String.valueOf(cur_proxi_time));
+//					    							Log.d(TAG, String.valueOf(stop_proxi_time_end));
+//					    							Log.d(TAG,String.valueOf(ReadProxi));
+//					    							Log.d(TAG,"cannot stop");
 				    								break;
 				    							}
 				    							cur_proxi_time = System.currentTimeMillis();
@@ -1107,17 +1110,17 @@ public class MyCallReceiver extends BroadcastReceiver {
 				    						}
 
 				    						RecordFlag = 1;
-				    						Log.d(TAG, "thread while break");
-				    						Log.d(TAG,String.valueOf(RecordFlag));
+//				    						Log.d(TAG, "thread while break");
+//				    						Log.d(TAG,String.valueOf(RecordFlag));
 				    						if (register_light==0)
 				    						{
 				    							register_light = 1;
-				    							Log.d(TAG,"register light in first thread");
+				    							logger.d("register light in first thread");
 				    							registerLightSensor();
 
 				    						}
 				    						
-				    						Log.d(TAG, "interrupte thread");
+				    						logger.d( "interrupte thread");
 				    						Thread.currentThread().interrupt();
 				    						return;
 				    			
@@ -1142,7 +1145,7 @@ public class MyCallReceiver extends BroadcastReceiver {
             					{
             						proxiThread.interrupt();
             						proxiThread = null;
-            						Log.d(TAG, "stop proxithread registed light sensor");     						
+            						logger.d( "stop proxithread registed light sensor");     						
             					}
             				}
         					
@@ -1151,7 +1154,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			    			if (proxi_thread_start ==0)
 			    			{
 			    				proxi_thread_start = 1;
-			    				Log.d(TAG,"first start proxithread");
+			    				logger.d("first start proxithread");
 			    				proxiThread = new Thread() {
 
 			    					public void run() {
@@ -1161,10 +1164,10 @@ public class MyCallReceiver extends BroadcastReceiver {
 				    						{
 				    							if ((cur_proxi_time > stop_proxi_time) && (ReadProxi>1))
 				    							{
-					    							Log.d(TAG, String.valueOf(cur_proxi_time));
-					    							Log.d(TAG, String.valueOf(stop_proxi_time));
-					    							Log.d(TAG,String.valueOf(ReadProxi));
-					    							Log.d(TAG,"cannot stop");
+//					    							Log.d(TAG, String.valueOf(cur_proxi_time));
+//					    							Log.d(TAG, String.valueOf(stop_proxi_time));
+//					    							Log.d(TAG,String.valueOf(ReadProxi));
+//					    							Log.d(TAG,"cannot stop");
 				    								break;
 				    							}
 				    							cur_proxi_time = System.currentTimeMillis();
@@ -1176,16 +1179,16 @@ public class MyCallReceiver extends BroadcastReceiver {
 				    						}
 
 				    						RecordFlag = 1;
-				    						Log.d("RecordFlag in thread",String.valueOf(RecordFlag));
+				    						//Log.d("RecordFlag in thread",String.valueOf(RecordFlag));
 				    						if (register_light==0)
 				    						{
 				    							register_light = 1;
-				    							Log.d(TAG,"register light in first thread");
+				    							logger.d("register light in first thread");
 				    							registerLightSensor();
 
 				    						}
 				    						
-				    						Log.d(TAG, "interrupte thread");
+				    						logger.d( "interrupte thread");
 				    						Thread.currentThread().interrupt();
 				    						return;
 				    			
@@ -1238,7 +1241,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 			object.put(tag, info);
 			String content = object.toString() + "\n";
 			myWriter.append(content);
-			Log.d(TAG, content);
+			logger.d( content);
 		} catch (JSONException | IOException e) {
 			e.printStackTrace();
 		}
@@ -1246,7 +1249,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 	
 	public void sendJSON(int Type, long timestamp, String tag, String info){
 		JSONObject tmp_object = new JSONObject();
-		Log.d(TAG, "write json start");
+		logger.d( "write json start");
 		try {
 			tmp_object.put("timestamp", timestamp);
 			tmp_object.put(tag, info);
@@ -1258,9 +1261,9 @@ public class MyCallReceiver extends BroadcastReceiver {
 			{
 				callEnd.put("raw" + String.valueOf(raw_counter), tmp_object);
 			}
-			Log.d(TAG, tmp_object.toString());
+			logger.d( tmp_object.toString());
 			raw_counter = raw_counter + 1;
-			Log.d(TAG, String.valueOf(raw_counter));
+			logger.d( String.valueOf(raw_counter));
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -1269,14 +1272,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 
 	public void sendFinalJSON(int Type,String info) {
 		try {
-			Log.d("start to send inent", "start to send inent");
+			//Log.d("start to send inent", "start to send inent");
 			if (Type == 1)
 			{
-				Log.d(TAG, "start to send call start");
+				logger.d( "start to send call start");
 				callStart.put("AveValue", info);
 				callStart.put("callType", 1);
 				callStart.put("Audioflag", Audio_flag);
-				Log.d("RGBAvailable", String.valueOf(RGBAvailabe));
+				//Log.d("RGBAvailable", String.valueOf(RGBAvailabe));
 				callStart.put("RGBAvailable", RGBAvailabe);
 
         		
@@ -1287,7 +1290,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 				it.putExtra("callStart", tmp_intent_mes);
 				it.setClass(context, MyService.class);
 				context.startService(it);
-            	Log.d(TAG, "start intent");
+            	logger.d( "start intent");
             	Log.d(TAG, tmp_intent_mes);
             	callStart = null;
             	callStart = new JSONObject();
@@ -1311,7 +1314,7 @@ public class MyCallReceiver extends BroadcastReceiver {
         		callEnd.put("AveValue", info);
         		callEnd.put("callType", 2);
         		callEnd.put("Audioflag", Audio_flag);
-        		Log.d(TAG, String.valueOf(RGBAvailabe));
+        		logger.d( String.valueOf(RGBAvailabe));
         		callEnd.put("RGBAvailable", RGBAvailabe);
         		JSONObject tmp_object = new JSONObject();
         		try {
@@ -1332,8 +1335,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 				it.putExtra("callEnd", tmp_intent_mes);
 				it.setClass(context, MyService.class);
 				context.startService(it);
-				Log.d(TAG, "send intent");
-      			Log.d(TAG, tmp_intent_mes);
+				logger.d( "send intent");
+      			logger.d( tmp_intent_mes);
       			callEnd = null;
       			callEnd = new JSONObject();
     			raw_counter = 0;
@@ -1348,7 +1351,7 @@ public class MyCallReceiver extends BroadcastReceiver {
             	
         	}
         	send_final_json = 1;
-        	Log.d(TAG, String.valueOf(send_final_json) + "			sent final json");
+        	logger.d( String.valueOf(send_final_json) + "			sent final json");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
