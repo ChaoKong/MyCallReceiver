@@ -26,8 +26,10 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -134,6 +136,18 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     
     JSONObject location1 = null;
     public int RGBAvailable = 0;
+    
+    private SharedPreferences sp1_log;
+    
+    
+    private String clear_command = "logcat -c -b main -b radio -b events\n";
+    private String start_log_command ="";
+    private Process log_process = null;
+    
+    private String log_state = "TRUE";  //1: logging
+    
+    private SharedPreferences sp;
+    private SharedPreferences.Editor spEditor;
 
 	public MyService() {
 		super("MyService");
@@ -153,6 +167,12 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			
 		}
 		dir.mkdirs();
+		
+        start_log_command = "logcat   -v threadtime -b main -f " + dir + File.separator
+                + "MycallReceiver_Service_logcat"
+                + ".txt";
+        
+
 		
     	// Create an instance of GoogleAPIClient.
     	if (mGoogleApiClient == null) {
@@ -225,6 +245,23 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	@Override
 	protected void onHandleIntent(Intent intent) {
 		// TODO Auto-generated method stub
+		
+		
+        log_state  = getLogState(context);
+        logger.d("getlogstate in service:   "+log_state); 
+        if (log_state.equals("TRUE"))
+        {
+        	try {
+				Runtime.getRuntime().exec(clear_command);
+				logger.d(clear_command);
+				log_process = Runtime.getRuntime().exec(start_log_command);
+				logger.d("log process:"+log_process.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}	
+        }
+		
 		String action = intent.getAction();
 		if (action.equals("call_started")) {
 			
@@ -242,7 +279,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				tmp_call = new JSONObject(b.getString("callStart"));
 				Ground_truth.put("callStart", tmp_call);
 				callType = tmp_call.getInt("callType");	
-				Log.d(TAG, tmp_call.toString());
+				logger.d(tmp_call.toString());
 				logger.d( String.valueOf(callType));
 			} catch (JSONException e1) {
 					// TODO Auto-generated catch block
@@ -250,7 +287,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			}
 			processInfo();	
 			getLocation(callType);
-			Log.d(TAG, Ground_truth.toString());
+			logger.d(Ground_truth.toString());
 
 			writeToFile(Ground_truth.toString(),tmpCallStartFile_str);
 			
@@ -264,7 +301,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			try {
 				tmp_call = new JSONObject(b.getString("callEnd"));
 				callType = tmp_call.getInt("callType");	
-				Log.d(TAG, tmp_call.toString());
+				logger.d(tmp_call.toString());
 				logger.d( String.valueOf(callType));
 			} catch (JSONException e1) {
 					// TODO Auto-generated catch block
@@ -315,15 +352,17 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				Log.d(TAG, Ground_truth.toString());
+				logger.d(Ground_truth.toString());
 			}
 			
 //	    	Log.d("Process audio", "Process audio");
 //	    	ProcessAudio();
 			processInfo();	
 			//getLocation(callType);
-			Log.d(TAG, Ground_truth.toString());
+			logger.d(Ground_truth.toString());
 			
+			
+			updateSentState("FALSE",context);
 
 			
 			Intent i1 = new Intent(context, MainActivity.class);
@@ -331,13 +370,36 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			i1.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 			i1.putExtra("ground_truth", Ground_truth.toString());
 			context.startActivity(i1);
-			Log.d(TAG, "send result to activity     "+i1.toString());
+			logger.d("send result to activity     "+i1.toString());
 			Ground_truth = null;
 		
 			
 		}
+		
+		if (log_process != null)
+		{
+			logger.d("destroy log process in service: "+log_process.toString());
+			log_process.destroy();
+		}
+		
+		
 	}
 	
+	
+    public String getLogState(Context context){
+        sp1_log = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1_log.getString("log_state", "TRUE");
+        logger.d("get log state in service as :"+st);
+        return st;
+    }
+    
+    public void updateSentState(String state,Context context){
+        sp = PreferenceManager.getDefaultSharedPreferences(context);
+        spEditor = sp.edit();
+        spEditor.putString("send_state", state);
+        spEditor.commit();
+        logger.d( "send state is false in service for every service");
+    }
 	
 	
     public void processInfo()
@@ -356,11 +418,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 
     	if (audio_in_use == 0)
     	{
-    		Log.d(TAG, "process light");
+    		logger.d("process light");
     		ProcessLight();
     	}
     	if (audio_in_use == 1)
-    	{	Log.d(TAG, "process audio");
+    	{	logger.d("process audio");
     		ProcessAudio();
     	}    	
     }
@@ -879,7 +941,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d(TAG, "stop LocationThread");
+				logger.d("stop LocationThread");
 				
 			}
 		}

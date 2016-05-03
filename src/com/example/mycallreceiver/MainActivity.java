@@ -40,6 +40,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -49,6 +50,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -56,6 +58,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 
 
@@ -104,6 +107,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	TextView textCallStart_reading;
 	TextView textLocationStart_reading;
 	TextView textLocationEnd_reading;
+	Button logBtn;
 	
 	File ResultFile = null;
 	FileOutputStream foutResult = null;
@@ -124,7 +128,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	double result2_con = 0.0;
 
 	public Thread waitForSending = null;
-	Context context = null;
+	private Context context = null;
 	
 	File GroundTruthFile = null;
 	FileOutputStream foutGroundtruth = null;
@@ -143,8 +147,21 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     public long start_location_time = 0;
     public long stop_location_time = 0;
     public Intent service_intent = null;
-    
 
+    
+    private SharedPreferences sp,sp1;
+    private SharedPreferences.Editor spEditor;
+    
+    private SharedPreferences sp_log,sp1_log;
+    private SharedPreferences.Editor spEditor_log;
+    
+    private String sent_state;
+    
+    private String clear_command = "logcat -c -b main -b radio -b events\n";
+    private String start_log_command ="";
+    private Process log_process = null;
+    
+    private String log_state = "TRUE";  //1: logging
 	
 
 
@@ -152,35 +169,23 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		
+		context = this;
 		setContentView(R.layout.activity_main);
-		
-		try {
-		    final File path = new File(
-		    		android.os.Environment.getExternalStorageDirectory(), "/CallDetection");
-		    if (!path.exists()) {
-		    }
-		    
-		    String Command = "logcat -c -b main -b radio -b events\n";
-            Runtime.getRuntime().exec(Command);        
-            Log.d(TAG,Command);
-            
-		    Runtime.getRuntime().exec(
-		            "logcat   -v threadtime -b main -f " + path + File.separator
-		                    + "IOdetection_logcat"
-		                    + ".txt");
-		} catch (IOException e) {
-		    e.printStackTrace();
-		}
 		textCallStart_reading = (TextView) findViewById(R.id.CallStart_reading);
 		textCallEnd_reading = (TextView) findViewById(R.id.CallEnd_reading);
 		textLocationStart_reading = (TextView) findViewById(R.id.LocationStart_reading);
 		textLocationEnd_reading = (TextView) findViewById(R.id.LocationEnd_reading);
+		logBtn=(Button) findViewById(R.id.log_switch);
+		
 		root = android.os.Environment.getExternalStorageDirectory();
 		dir = new File(root.getAbsolutePath() + "/CallDetection");
 		dir.mkdirs();
 		Groundtruthfile_str = dir+"/GroundTruthFile.txt";
-		
+		if (!dir.exists()) {
+		}
+		start_log_command = "logcat   -v threadtime -b main -f " + dir + File.separator
+		        + "MyCallReceiver_MainActivity_logcat"
+		        + ".txt";
 
 		
     	// Create an instance of GoogleAPIClient.
@@ -205,32 +210,72 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				e.printStackTrace();
 			}
 		}
+		
+		
 
 		logger.d("test for logger");
-
-
-	
 	
 	}
 	
-	
-	@Override
-    public void onNewIntent (Intent intent)
-    {
-		super.onNewIntent(intent);
-	    setIntent(intent);
-	    Log.d(TAG, "new intent");
-    }
 	
 	
 	@Override
 	public void onResume() {
 		super.onResume();
+		
+		
+		if (log_process != null)
+		{
+			logger.d("log_process in onResume:  "+log_process.toString());
+		}
+        log_state  = getLogState(context);
+        logger.d("getlogstate in main activity:   "+log_state); 
+        if (log_state.equals("FALSE"))
+        {
+        	logBtn.setText("logging stopped (push to start logging)");
+        	logger.d("set text on logBtn logging stopped");
+        }
+        else
+        {
+        	logBtn.setText("logging (push to stop logging)");
+        	logger.d("set text on logBtn logging started");
+        }
+        
+        if ((log_state.equals("TRUE")) && (log_process ==null ))
+        {
+        	try {
+				Runtime.getRuntime().exec(clear_command);
+				logger.d(clear_command);
+				log_process = Runtime.getRuntime().exec(start_log_command);
+				logger.d("log process:"+log_process.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}	
+        }
+				
 		service_intent = getIntent();
-		Log.d(TAG, "onResume");
-		Log.d(TAG, service_intent.toString());
+		sent_state = getSentState(context);
+		logger.d("get previous sent state:"+sent_state);
+		boolean launchedFromHistory = service_intent != null ? (service_intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0 : false;
+		logger.d("lacunch from history:	"+launchedFromHistory);
+		
+		boolean enable_pop = true;
+		if (launchedFromHistory)
+		{
+			if (sent_state.equals("TRUE"))
+			{
+				enable_pop = false;
+			}
+		}
+		
+		logger.d("value of enable pop:"+enable_pop);
+		
+
+		logger.d("onResume");
+		logger.d(service_intent.toString());
 		Bundle b = service_intent.getExtras();
-		if (b!=null){
+		if ((b!=null) && (enable_pop)){
 			
 			String tmp_groundth =(String) b.get("ground_truth"); 
 			if (tmp_groundth!=null)
@@ -242,10 +287,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				Log.d(TAG, Ground_truth.toString());
+				logger.d( Ground_truth.toString());
 				
 				mGoogleApiClient.connect();
 				LocationFlag = 0;
+			
 				
 				LocationThread = null;
 				getLocation();
@@ -284,7 +330,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 						try {
 							logger.d(Ground_truth.toString());
 							Ground_truth.put("End_ground_truth", End_truth);
-							Log.d(TAG, Ground_truth.toString());
+							logger.d(Ground_truth.toString());
 						} catch (JSONException e1) {
 							// TODO Auto-generated catch block
 							e1.printStackTrace();
@@ -359,37 +405,107 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		
 	}
 	
+	
+	public void logSwitch(View view) throws IOException {
+		
+		
+		log_state = getLogState(context);
+		logger.d("get log state from getlogstate:	"+log_state);
+		if (log_state.equals("FALSE")){
+			log_state ="TRUE";
+			updateLogState(log_state,context);
+			logBtn.setText("logging (push to stop logging)");
+			
+			if (log_process==null) {
+				
+				logger.d("log process:   "+"null");
+			}
+
+		}
+		else
+		{	log_state = "FALSE";
+			
+			updateLogState(log_state,context);
+			if (log_process!=null)
+			{
+				logger.d("destroy log procee:"+log_process.toString());
+				log_process.destroy();
+				
+			}
+			logBtn.setText("logging stopped (push to start logging)");
+		}
+	}
+	
+	
+    public void updateSentState(String state,Context context){
+        sp = PreferenceManager.getDefaultSharedPreferences(context);
+        spEditor = sp.edit();
+        spEditor.putString("send_state", state);
+        spEditor.commit();
+        logger.d( "finish updated data");
+    }
+    
+    public String getSentState(Context context){
+        sp1 = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1.getString("send_state", "");
+        logger.d("get send state as :"+st);
+        return st;
+    }
+    
+    
+    public void updateLogState(String state,Context context){
+        sp_log = PreferenceManager.getDefaultSharedPreferences(context);
+        spEditor_log = sp_log.edit();
+        spEditor_log.putString("log_state", state);
+        spEditor_log.commit();
+        logger.d( "finish update log state"+state);
+    }
+    
+    public String getLogState(Context context){
+        sp1_log = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1_log.getString("log_state", "TRUE");
+        logger.d("get log state as :"+st);
+        return st;
+    }
+	
 	@Override
 	public void onDestroy() {
 	    super.onDestroy();
-	    Log.d("status", "onDestroy");
+	    logger.d("status onDestroy");
+		if (log_process != null)
+		{
+			logger.d("log process:(destroy) "+log_process.toString());
+			log_process.destroy();
+
+			
+		}
 	}
 	
 	@Override
 	public void onPause() {
 	    super.onPause();
-	    Log.d("status", "onPause");
+	    logger.d("status onPause");
 	   
 	}
 	
 	@Override
 	public void onStart() {
 	    super.onStart();
-	    Log.d("status", "onstart");
+	    logger.d("status onstart");
 	
 	}
 	
 	@Override
 	public void onRestart() {
 	    super.onRestart();
-	    Log.d("status", "onRestart");
+	    logger.d("status onRestart");
 
 	}
 	
 	@Override
 	public void onStop() {
 	    super.onStop();
-	    Log.d("status", "onStop");
+	    logger.d("status onStop");
 	    this.finish();
 	  
 	}
@@ -449,13 +565,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				result2_Str = "Result: " + "indoor   " + "     confidence:  " + splitStr_result2[1];
 			}
 			else if(result2 == 1) {
-				if ((result2_con < 0.9) && (calculate_mode==1)){
-					result2_Str = "Result:	" + "Unknown   ";					
-				}
-				else
-				{
+			
 				result2_Str = "Result:	" + "outdoor   " + "     confidence:  " + splitStr_result2[1];
-				}
+				
 			}
 			else{
 				result2_Str = "Result:	" + "Unknown   ";	
@@ -466,7 +578,6 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     
 
 	public void SendInformation() {
-
 		Thread t = new Thread() {
 
 			public void run() {
@@ -492,8 +603,10 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 																			// the
 																			// entity
 						String s = getStringFromInputStream(in);
+						updateSentState("TRUE",context);
+						logger.d("update sent state:TRUE");
 						
-						Log.d(TAG, "Jack-Response   " +s);
+						logger.d( "Jack-Response   " +s);
 
 					}
 					Ground_truth = null;
@@ -554,6 +667,10 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					}
 				
 			    }
+				logger.d("return waitsending thread");
+				Thread.currentThread().interrupt();
+				return;
+				
 			}
 		};
 		waitForSending.start();
@@ -657,7 +774,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			{
 				LocationThread.interrupt();
 				LocationThread = null;
-				Log.d(TAG, "stop LocationThread");
+				logger.d( "stop LocationThread");
 
 			}
 		}

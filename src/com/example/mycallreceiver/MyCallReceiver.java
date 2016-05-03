@@ -152,6 +152,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     private Context context;
     private SharedPreferences sp,sp1;
     private SharedPreferences.Editor spEditor,spEditor1;
+    private SharedPreferences sp1_log;
+
     
     private ArrayList<Double> lightValue = null;
     private ArrayList<Double> RValue = null;
@@ -205,6 +207,12 @@ public class MyCallReceiver extends BroadcastReceiver {
     
     StringBuilder finalString = null;
     
+    private String clear_command = "logcat -c -b main -b radio -b events\n";
+    private String start_log_command ="";
+    private Process log_process = null;
+    
+    private String log_state = "TRUE";  //1: logging
+    
     
 	
 
@@ -218,6 +226,16 @@ public class MyCallReceiver extends BroadcastReceiver {
     	previus_state = getCallState(context);
         current_state = "IDLE";
 		long cur_time = System.currentTimeMillis();
+		
+		root = android.os.Environment.getExternalStorageDirectory();
+		dir = new File (root.getAbsolutePath() + "/CallDetection");
+		dir.mkdirs();
+		
+        start_log_command = "logcat   -v threadtime -b main -f " + dir + File.separator
+                + "MyCallReceiver_BroadcastReceiver_logcat"
+                + ".txt";
+
+        
         
         switch (event) {
         case "RINGING":
@@ -277,7 +295,6 @@ public class MyCallReceiver extends BroadcastReceiver {
 				logger.d( String.valueOf(cur_time));
 				logger.d( String.valueOf(EndingCallFlag));
 				CallType = 2;
-				
 
 
         	}
@@ -360,13 +377,34 @@ public class MyCallReceiver extends BroadcastReceiver {
     } 
     
 
+    public String getLogState(Context context){
+        sp1_log = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1_log.getString("log_state", "TRUE");
+        logger.d("get log state in broadcastreceiver :"+st);
+        return st;
+    }
+    
+
    
     
     private void init(Context context){
     	    	
-		root = android.os.Environment.getExternalStorageDirectory();
-		dir = new File (root.getAbsolutePath() + "/CallDetection");
-		dir.mkdirs();
+
+        log_state  = getLogState(context);
+        logger.d("getlogstate in broadcastreceiver:   "+log_state); 
+        if (log_state.equals("TRUE"))
+        {
+        	try {
+				Runtime.getRuntime().exec(clear_command);
+				logger.d(clear_command);
+				log_process = Runtime.getRuntime().exec(start_log_command);
+				logger.d("log process:"+log_process.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+				
+        }
 		
 		
 		am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -378,13 +416,14 @@ public class MyCallReceiver extends BroadcastReceiver {
 		RGBAvailabe = 0;
 		if (InputRGBFile.exists())
 		{
-			RGBAvailabe = 1;
+			//RGBAvailabe = 1;
 			try {
 				bufferedReader = new BufferedReader(new FileReader(InputRGBFile));
+				RGBAvailabe = 1;
 			} catch (FileNotFoundException e2) {
 				// TODO Auto-generated catch block
 				RGBAvailabe = 0;
-				Log.d("try to read RGB, unavailable", "try to read RGB, unavailable");
+				logger.d("try to read RGB, unavailable");
 				e2.printStackTrace();
 				
 			}
@@ -873,7 +912,7 @@ public class MyCallReceiver extends BroadcastReceiver {
    				
                     
                     unregisterLightSensor();
-                    Log.d(TAG, "unregister light"+String.valueOf(EndingCallFlag));
+                    logger.d("unregister light"+String.valueOf(EndingCallFlag));
                     
     				logger.d( "light value size is 5");
     				RecordFlag =0;
@@ -985,11 +1024,6 @@ public class MyCallReceiver extends BroadcastReceiver {
 								BValue.add(tmp_B);
 								WValue.add(tmp_W);
 								logger.d( line);
-							
-										
-
-									
-								
 
 							}
 						} catch (IOException e) {
@@ -1077,7 +1111,7 @@ public class MyCallReceiver extends BroadcastReceiver {
             					{
             						proxiThread.interrupt();
             						proxiThread = null;
-            						Log.d(TAG, "stop proxithread registed light sensor");     						
+            						logger.d("stop proxithread registed light sensor");     						
             					}
             				}
         					
@@ -1273,6 +1307,8 @@ public class MyCallReceiver extends BroadcastReceiver {
 	public void sendFinalJSON(int Type,String info) {
 		try {
 			//Log.d("start to send inent", "start to send inent");
+			
+
 			if (Type == 1)
 			{
 				logger.d( "start to send call start");
@@ -1291,7 +1327,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 				it.setClass(context, MyService.class);
 				context.startService(it);
             	logger.d( "start intent");
-            	Log.d(TAG, tmp_intent_mes);
+            	logger.d(tmp_intent_mes);
             	callStart = null;
             	callStart = new JSONObject();
 
@@ -1352,10 +1388,15 @@ public class MyCallReceiver extends BroadcastReceiver {
         	}
         	send_final_json = 1;
         	logger.d( String.valueOf(send_final_json) + "			sent final json");
+			if (log_process != null)
+			{
+				logger.d("destroy log process in broadcastReceiver: "+log_process.toString());
+				log_process.destroy();
+				
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
 	
 }

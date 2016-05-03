@@ -44,4 +44,13 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/LocationStart_reading" />
     
+    
+  	<Button
+        android:id="@+id/log_switch"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text ="Logging(push to stop)"
+        android:onClick="logSwitch"
+        android:layout_below="@+id/LocationEnd_reading"/>
+    
 </RelativeLayout>
