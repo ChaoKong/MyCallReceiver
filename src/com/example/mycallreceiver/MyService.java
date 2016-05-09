@@ -346,19 +346,21 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				}
 				
 				
-				try {
-					Ground_truth.put("callEnd", tmp_call);
-				} catch (JSONException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				logger.d(Ground_truth.toString());
+
 			}
 			
 //	    	Log.d("Process audio", "Process audio");
 //	    	ProcessAudio();
 			processInfo();	
 			//getLocation(callType);
+			try {
+				Ground_truth.put("callEnd", tmp_call);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			logger.d(Ground_truth.toString());
+			
 			logger.d(Ground_truth.toString());
 			
 			
@@ -427,7 +429,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     	}    	
     }
     
-    public void ProcessLight(){
+    public String ProcessLight(){
     	
     	String AveValue;
 		try {
@@ -447,7 +449,6 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			int Hours = rightNow.get(Calendar.HOUR_OF_DAY);
 			int Minutes = rightNow.get(Calendar.MINUTE);
 			Double CurrentTime = (double) Hours + (double) (Minutes/60);
-			
 			if (RGBAvailable == 1){
 				if ((CurrentTime > 7.5) && (CurrentTime < 20.5)) {
 					DaytimeFlag = 1;
@@ -480,12 +481,17 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	    		result_str = NightPredict(Light_Sum,Wifi_Sum);
 	    	}
 	    	logger.d( result_str);
-	    	addResults(result_str,callType,calculate_mode);
-	    	WriteResult(result_str);
+	    	if (audio_in_use==0) {
+	    		addResults(result_str,callType,calculate_mode);
+	    		WriteResult(result_str);
+	    	}
+	    	
+	    	return result_str;
 	    	
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			String tmp_result = "0"+" "+"0.0";
+			return tmp_result;
 		}
     }
     
@@ -534,6 +540,50 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		jniSvmPredict(Cmd_svm_predict);
 		logger.d( "finish testing");
 		
+		
+		
+		File AudioFeatureFile = new File(Str_test);
+		BufferedReader bufferedReader_feature = null;
+		try {
+			bufferedReader_feature = new BufferedReader(new FileReader(AudioFeatureFile));
+		} catch (FileNotFoundException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+		
+		StringBuilder finalString_feature = new StringBuilder();
+
+		if (bufferedReader_feature != null) {
+			String line;
+			try {
+				
+				while ((line = bufferedReader_feature.readLine()) != null) {
+					
+					finalString_feature.append(line);
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		try {
+			bufferedReader_feature.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		if (tmp_call!=null)
+		{
+			try {
+				tmp_call.put("audio_feature", finalString_feature.toString());
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		
 		File AudioResultFile = new File(Str_result);
 		BufferedReader bufferedReader_svm = null;
 		try {
@@ -542,7 +592,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
 		}
-
+		
 		StringBuilder finalString = new StringBuilder();
 
 		if (bufferedReader_svm != null) {
@@ -569,24 +619,62 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		}
 
 		Str_return_result = finalString.toString();
+		
+		int Tmp_audio_result = 0;
+		Double Tmp_audio_con = 0.0;
 		if (Str_return_result.length() > 6) {
 			String[] splitStr = Str_return_result.split("\\s+");
-			int Tmp_result = Integer.parseInt(splitStr[0]);
-			Double Tmp_con = 0.0;
-			if (Tmp_result == -1) {
-				Tmp_con = Double.parseDouble(splitStr[2]);
+			Tmp_audio_result = Integer.parseInt(splitStr[0]);
+			Tmp_audio_con = 0.0;
+			if (Tmp_audio_result == -1) {
+				Tmp_audio_con = Double.parseDouble(splitStr[2]);
 			} else {
-				Tmp_con = Double.parseDouble(splitStr[1]);
+				Tmp_audio_con = Double.parseDouble(splitStr[1]);
 
 			}
-			Str_return_result = String.valueOf(Tmp_result) + " " + String.valueOf(Tmp_con);
-			logger.d( Str_return_result);
+			Str_return_result = String.valueOf(Tmp_audio_result) + " " + String.valueOf(Tmp_audio_con);
+			logger.d( "audio result" +Str_return_result);
 		} else {
 			Str_return_result = "0" +" "+ "0.0";
 		}
-		calculate_mode = 4;
-		addResults(Str_return_result,callType,calculate_mode);	
-		WriteResult(Str_return_result);
+
+
+		
+		
+		String light_result_str = ProcessLight();
+		
+		logger.d( "light result" +light_result_str);
+		
+		String[] splitLightStr = light_result_str.split("\\s+");
+		int Tmp_light_result = Integer.parseInt(splitLightStr[0]);
+		Double Tmp_light_con = Double.parseDouble(splitLightStr[1]);
+		
+		int Result = 0;
+		Double Result_con = 0.0;
+		if (Tmp_light_result == Tmp_audio_result) {
+			Result = Tmp_light_result;
+			Result_con = 1 - (1 - Tmp_light_con) * (1 - Tmp_audio_con);
+		} else {
+			if (Tmp_light_con > Tmp_audio_con) {
+				Result = Tmp_light_result;
+				Result_con = Tmp_light_con * (1 - Tmp_audio_con);
+			} else {
+				Result = Tmp_audio_result;
+				Result_con = Tmp_audio_con * (1 - Tmp_light_con);
+			}
+			
+			if (Result_con>1.0)
+			{
+				Result_con=1.0;
+			}
+		}
+		
+		String final_return_result = String.valueOf(Result) + " " + String.valueOf(Result_con);
+		//String final_return_result = Str_return_result;
+		logger.d( "final result" +final_return_result);
+		calculate_mode = 4;				
+		addResults(final_return_result,callType,calculate_mode);	
+		WriteResult(final_return_result);
     }
 	
     private String svmPredictResult(double Light_Sum, double R_Sum, double G_Sum, double B_Sum, double W_Sum){
@@ -749,6 +837,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 				}
 			}
 		}
+		
+		if (Result_con > 1.0)
+		{
+			Result_con =1.0;
+		}
 
 		Str_return_result = Integer.toString(Result) + " " + Double.toString(Result_con);
 		calculate_mode = 2;
@@ -820,6 +913,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 					Result_con = Wifi_con * (1 - Light_con);
 				}
 			}
+		}
+		
+		if (Result_con > 1.0)
+		{
+			Result_con =1.0;
 		}
 
 		Str_return_result = Integer.toString(Result) + " " + Double.toString(Result_con);

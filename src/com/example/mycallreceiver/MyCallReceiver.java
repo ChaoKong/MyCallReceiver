@@ -151,8 +151,9 @@ public class MyCallReceiver extends BroadcastReceiver {
     public static Boolean dialog= false;
     private Context context;
     private SharedPreferences sp,sp1;
-    private SharedPreferences.Editor spEditor,spEditor1;
+    private SharedPreferences.Editor spEditor;
     private SharedPreferences sp1_log;
+    private SharedPreferences sp1_audio;
 
     
     private ArrayList<Double> lightValue = null;
@@ -174,7 +175,7 @@ public class MyCallReceiver extends BroadcastReceiver {
 //    
 //    public int calculate_mode = 0;
     
-    //  0- default; 1- RGB; 2 - night predict ; 3 - > 5000; 4 - audio test; 5 - no light and wifi
+    //  0- default; 1- RGB; 2 - night predict ; 3 - > 5000; 4 - audio test; 5 - no light and wifi; 6 - daytime predict
     public int Audio_flag = 0;
     public int Audio_start = 0;
   
@@ -212,6 +213,10 @@ public class MyCallReceiver extends BroadcastReceiver {
     private Process log_process = null;
     
     private String log_state = "TRUE";  //1: logging
+    
+    private String audio_state = "TRUE";  //1: audio in use
+    
+    private int audio_state_flag = 1;
     
     
 	
@@ -384,6 +389,14 @@ public class MyCallReceiver extends BroadcastReceiver {
         return st;
     }
     
+    
+    public String getAudioState(Context context){
+        sp1_audio = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1_audio.getString("audio_state", "TRUE");
+        logger.d("get audio state as :"+st);
+        return st;
+    }
+    
 
    
     
@@ -405,6 +418,21 @@ public class MyCallReceiver extends BroadcastReceiver {
 			}
 				
         }
+        
+        audio_state = getAudioState(context);
+        
+        if (audio_state.equals("TRUE"))
+        {
+        	audio_state_flag = 1;
+        	logger.d("audio state flag true: "+String.valueOf(audio_state_flag));
+        }
+        if (audio_state.equals("FALSE"))
+        {
+        	audio_state_flag = 0;
+        	logger.d("audio state flag false: "+String.valueOf(audio_state_flag));
+        }
+        
+        
 		
 		
 		am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -940,7 +968,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     				
     				logger.d( String.valueOf(isS6));
     				
-    	            if (((Wifi_Sum<(-105))&& (Light_Sum < 3)) &&  ((Audio_start==0) && ((EndingCallFlag ==1)) && (isS6 ==1)))
+    	            if ( ((isS6 ==1)&& (audio_state_flag ==1)) &&  ((Audio_start==0) && (EndingCallFlag ==1)) )
     				//if (((Audio_start==0) && (EndingCallFlag ==1)) && (isS6 ==1) )
     	            {
     	            	Audio_start = 1;

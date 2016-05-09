@@ -108,6 +108,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	TextView textLocationStart_reading;
 	TextView textLocationEnd_reading;
 	Button logBtn;
+	Button AudioBtn;
 	
 	File ResultFile = null;
 	FileOutputStream foutResult = null;
@@ -155,6 +156,9 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     private SharedPreferences sp_log,sp1_log;
     private SharedPreferences.Editor spEditor_log;
     
+    private SharedPreferences sp_audio,sp1_audio;
+    private SharedPreferences.Editor spEditor_audio;
+    
     private String sent_state;
     
     private String clear_command = "logcat -c -b main -b radio -b events\n";
@@ -162,6 +166,11 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
     private Process log_process = null;
     
     private String log_state = "TRUE";  //1: logging
+    
+    private String audio_state = "TRUE";
+    
+    private int isS6 = 0;
+    private int isG4 = 0;
 	
 
 
@@ -176,6 +185,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		textLocationStart_reading = (TextView) findViewById(R.id.LocationStart_reading);
 		textLocationEnd_reading = (TextView) findViewById(R.id.LocationEnd_reading);
 		logBtn=(Button) findViewById(R.id.log_switch);
+		AudioBtn = (Button) findViewById(R.id.Audio_switch);
 		
 		root = android.os.Environment.getExternalStorageDirectory();
 		dir = new File(root.getAbsolutePath() + "/CallDetection");
@@ -211,6 +221,18 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			}
 		}
 		
+       	String deviceModel = Build.MODEL;
+       	logger.d(deviceModel);
+    	String S6 = "g920t";
+    	String G4 = "lg";
+    	if (deviceModel.toLowerCase().contains(S6.toLowerCase())){
+    		isS6 =1;
+    	}
+    	
+    	if (deviceModel.toLowerCase().contains(G4.toLowerCase())){
+    		isG4 =1;
+    	}
+		
 		
 
 		logger.d("test for logger");
@@ -240,6 +262,29 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
         	logBtn.setText("logging (push to stop logging)");
         	logger.d("set text on logBtn logging started");
         }
+
+        if (isS6==1)
+        {
+            
+            audio_state = getAudioState(context);
+            logger.d("get audio state in main activity:   "+audio_state);
+        	
+			if (audio_state.equals("FALSE")) {
+				
+				AudioBtn.setText("Audio stopped (push to use audio)");
+				logger.d("set text on AudioBtn audio stopped");
+				
+
+			} else {
+				AudioBtn.setText("Audio in using (push to stop audio)");
+				logger.d("set text on AudioBtn audio started");
+			}
+        }
+        else
+        {
+        	AudioBtn.setText("Audio not supported");
+        }
+        
         
         if ((log_state.equals("TRUE")) && (log_process ==null ))
         {
@@ -280,7 +325,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			String tmp_groundth =(String) b.get("ground_truth"); 
 			if (tmp_groundth!=null)
 			{
-				logger.d(tmp_groundth);
+				
 				try {
 					Ground_truth = new JSONObject(tmp_groundth);
 				} catch (JSONException e) {
@@ -437,6 +482,33 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 	}
 	
 	
+	
+	public void AudioSwitch(View view) throws IOException {
+		
+		if (isS6==1) {
+			audio_state = getAudioState(context);
+			logger.d("get audio state from getAudiostate:	" + audio_state);
+			if (audio_state.equals("FALSE")) {
+				audio_state = "TRUE";
+				updateAudioState(audio_state, context);
+				AudioBtn.setText("Audio in using (push to stop audio)");
+				logger.d("set audio in using");
+
+			} else {
+				audio_state = "FALSE";
+
+				updateAudioState(audio_state, context);
+				AudioBtn.setText("Audio stopped (push to use audio)");
+				logger.d("set audio to stop");
+			}
+		}
+		else
+		{
+        	AudioBtn.setText("Audio not supported");
+			
+		}
+	}
+	
     public void updateSentState(String state,Context context){
         sp = PreferenceManager.getDefaultSharedPreferences(context);
         spEditor = sp.edit();
@@ -465,6 +537,22 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
         sp1_log = PreferenceManager.getDefaultSharedPreferences(context);
         String st =sp1_log.getString("log_state", "TRUE");
         logger.d("get log state as :"+st);
+        return st;
+    }
+    
+    
+    public void updateAudioState(String state,Context context){
+        sp_audio = PreferenceManager.getDefaultSharedPreferences(context);
+        spEditor_audio = sp_audio.edit();
+        spEditor_audio.putString("audio_state", state);
+        spEditor_audio.commit();
+        logger.d( "finish update audio state"+state);
+    }
+    
+    public String getAudioState(Context context){
+        sp1_audio = PreferenceManager.getDefaultSharedPreferences(context);
+        String st =sp1_audio.getString("audio_state", "TRUE");
+        logger.d("get audio state as :"+st);
         return st;
     }
 	

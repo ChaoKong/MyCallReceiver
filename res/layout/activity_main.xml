@@ -52,5 +52,13 @@
         android:text ="Logging(push to stop)"
         android:onClick="logSwitch"
         android:layout_below="@+id/LocationEnd_reading"/>
+  	
+  	<Button
+        android:id="@+id/Audio_switch"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text ="Audio in using(push to stop)"
+        android:onClick="AudioSwitch"
+        android:layout_below="@+id/log_switch"/>
     
 </RelativeLayout>
