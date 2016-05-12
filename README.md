@@ -10,6 +10,7 @@ In addition, the project uses native code. We can use Native Development Kit (ND
 Here are the links of how to use NDK.
 
 http://developer.android.com/ndk/guides/index.html
+
 http://developer.android.com/ndk/guides/setup.html
 
 For this project, I use the android-ndk-r10e. I put the whole "MyCallReceiver" project in the directory:
