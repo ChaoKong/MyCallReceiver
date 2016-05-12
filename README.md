@@ -8,8 +8,8 @@ https://developers.google.com/android/guides/setup#add_google_play_services_to_y
 
 In addition, the project uses native code. We can use Native Development Kit (NDK) to build it.
 Here are the links of how to use NDK.
-http://developer.android.com/ndk/guides/index.html
 
+http://developer.android.com/ndk/guides/index.html
 http://developer.android.com/ndk/guides/setup.html
 
 For this project, I use the android-ndk-r10e. I put the whole "MyCallReceiver" project in the directory:
