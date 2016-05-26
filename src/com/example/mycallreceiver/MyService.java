@@ -451,12 +451,12 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 			Double CurrentTime = (double) Hours + ( (double)Minutes/60);
 			
 			if (RGBAvailable == 1){
-				if ((CurrentTime > 7.5) && (CurrentTime < 20.7)) {
+				if ((CurrentTime > 6.5) && (CurrentTime < 21)) {
 					DaytimeFlag = 1;
 				}
 			}
 			else{
-				if ((CurrentTime > 7.5) && (CurrentTime < 20)) {
+				if ((CurrentTime > 6.5) && (CurrentTime < 21)) {
 					DaytimeFlag = 1;
 				}
 				
@@ -586,7 +586,7 @@ ConnectionCallbacks, OnConnectionFailedListener,LocationListener {
 		String audio_feature_string = finalString_feature.toString();
 		
 		String nan_str = "nan";
-		if ( ! audio_feature_string.toLowerCase().contains(nan_str.toLowerCase()))
+		if ( !audio_feature_string.toLowerCase().contains(nan_str.toLowerCase()))
 		{
 		
 			jniSvmScale(Cmd_svm_scale);

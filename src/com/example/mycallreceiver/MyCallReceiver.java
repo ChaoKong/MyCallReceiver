@@ -218,6 +218,10 @@ public class MyCallReceiver extends BroadcastReceiver {
     
     private int audio_state_flag = 1;
     
+    private String deviceModel;
+    
+    public String deviceOSversion;
+    
     
 	
 
@@ -539,7 +543,7 @@ public class MyCallReceiver extends BroadcastReceiver {
     	callStart = null;
     	callEnd = null;
     	
-       	String deviceModel = Build.MODEL;
+       	deviceModel = Build.MODEL;
        	logger.d(deviceModel);
     	String S6 = "g920t";
     	String G4 = "lg";
@@ -550,6 +554,8 @@ public class MyCallReceiver extends BroadcastReceiver {
     	if (deviceModel.toLowerCase().contains(G4.toLowerCase())){
     		isG4 =1;
     	}
+    	
+    	deviceOSversion = android.os.Build.VERSION.RELEASE;
     	
     	
 		
@@ -1384,6 +1390,8 @@ public class MyCallReceiver extends BroadcastReceiver {
         		try {
 					tmp_object.put("deviceID", device_ID);
 					tmp_object.put("incomingNum", incoming_number);
+					tmp_object.put("deviceModel", deviceModel);
+					tmp_object.put("deviceOS", deviceOSversion);
         		} catch (JSONException e) {
         			e.printStackTrace();
         		}
